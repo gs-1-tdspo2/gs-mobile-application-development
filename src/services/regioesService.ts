@@ -1,5 +1,5 @@
 import { api } from '@/services/api';
-import { Regiao, RegiaoReadModel } from '@/types/regiao';
+import { Regiao, RegiaoCreateRequest, RegiaoReadModel, RegiaoUpdateRequest } from '@/types/regiao';
 import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
 
 export async function getRegioes(): Promise<RegiaoReadModel[]> {
@@ -20,6 +20,23 @@ export async function buscarRegiaoPorId(id: number | string): Promise<RegiaoRead
   return getRegiaoById(id);
 }
 
+export async function createRegiao(payload: RegiaoCreateRequest): Promise<RegiaoReadModel> {
+  const response = await api.post<Regiao>('/api/regioes', normalizePayload(payload));
+  return normalizeRegiao(response.data);
+}
+
+export async function updateRegiao(
+  id: number | string,
+  payload: RegiaoUpdateRequest,
+): Promise<RegiaoReadModel> {
+  const response = await api.put<Regiao>(`/api/regioes/${id}`, normalizePayload(payload));
+  return normalizeRegiao(response.data);
+}
+
+export async function deleteRegiao(id: number | string): Promise<void> {
+  await api.delete(`/api/regioes/${id}`);
+}
+
 function normalizeRegiao(raw: Regiao): RegiaoReadModel {
   return {
     id: pickValue(raw, ['id', 'codigo']) ?? '',
@@ -33,6 +50,19 @@ function normalizeRegiao(raw: Regiao): RegiaoReadModel {
     riscoNivel: pickRisk(raw, ['riscoAtual', 'currentRisk', 'nivelRisco', 'risco']),
     alertasAtivos: pickNumber(raw, ['alertasAtivos', 'activeAlertsCount', 'quantidadeAlertasAtivos']),
     raw,
+  };
+}
+
+function normalizePayload(payload: RegiaoCreateRequest | RegiaoUpdateRequest) {
+  const normalizedEstado = payload.estado?.trim().toUpperCase();
+
+  return {
+    ...payload,
+    nome: payload.nome?.trim(),
+    cidade: payload.cidade?.trim(),
+    estado: normalizedEstado,
+    tipoCliente: payload.tipoCliente?.trim(),
+    descricao: payload.descricao?.trim(),
   };
 }
 
