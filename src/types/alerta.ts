@@ -1,14 +1,51 @@
 import { RiscoNivel } from '@/types/risco';
 
 export type Alerta = {
-  id: number;
+  id?: number | string;
+  idAlerta?: number | string;
+  idRegiao?: number | string;
   titulo?: string;
+  title?: string;
+  tipoAlerta?: string;
   mensagem?: string;
+  descricao?: string;
+  description?: string;
+  recomendacao?: string;
   nivel?: RiscoNivel;
+  severidade?: RiscoNivel | string;
+  severity?: RiscoNivel | string;
+  nivelRisco?: RiscoNivel | string;
+  riskLevel?: RiscoNivel | string;
+  status?: string;
+  statusAlerta?: string;
   regiaoId?: number;
   regiaoNome?: string;
+  regiao?: { id?: number | string; nome?: string; name?: string };
   resolvido?: boolean;
+  resolved?: boolean;
+  criadoEm?: string;
+  dataCriacao?: string;
+  createdAt?: string;
+  dtAlerta?: string;
+  resolvidoEm?: string;
+  dataResolucao?: string;
+  resolvedAt?: string;
+  dtResolvidoEm?: string;
+  [key: string]: unknown;
+};
+
+export type AlertaReadModel = {
+  id: number | string;
+  titulo: string;
+  descricao?: string;
+  recomendacao?: string;
+  tipoAlerta?: string;
+  nivel?: RiscoNivel;
+  status?: string;
+  resolvido: boolean;
+  regiaoId?: number | string;
+  regiaoNome?: string;
   criadoEm?: string;
   resolvidoEm?: string;
-  [key: string]: unknown;
+  raw?: Alerta;
 };
