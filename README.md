@@ -87,12 +87,32 @@ URLs comuns:
 
 Se a API estiver offline, as telas de Dashboard e Regiões exibem uma mensagem de erro com ação de tentar novamente.
 
+## Demo de Regiões CRUD
+
+A tela `Gerenciar Regiões` manipula dados pela API Java usando:
+
+- `GET /api/regioes`
+- `POST /api/regioes`
+- `PUT /api/regioes/{id}`
+- `DELETE /api/regioes/{id}`
+
+Checklist rápido para demonstração:
+
+1. Inicie a API Java na porta `8080`.
+2. Abra `Gerenciar Regiões` no app mobile.
+3. Crie uma região.
+4. Edite os dados da região criada.
+5. Exclua a região e confirme o comportamento retornado pela API.
+
+Se o backend usar exclusão lógica, a região pode continuar na lista como inativa. Nesse caso, valide o badge de status em vez de esperar que ela desapareça.
+
 ## Funcionalidades iniciais
 
 - Tela Home/Dashboard integrada ao resumo da API
 - Navegacao por Expo Router em `src/app`
 - Tela de regioes integrada ao fluxo de leitura da API
 - Rota dinamica `/regioes/[id]` com prévia de detalhe
+- CRUD de Regiões pela API Java em `Gerenciar Regiões`
 - Telas placeholder para Gerenciar Regioes, Alertas e Indicadores
 - Componentes reutilizaveis: `AppButton`, `AppCard`, `EmptyState`, `ErrorState`, `LoadingState`, `RiskBadge`
 - Constantes visuais para cores e espacamento

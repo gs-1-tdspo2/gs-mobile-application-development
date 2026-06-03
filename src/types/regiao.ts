@@ -43,12 +43,12 @@ export type RegiaoReadModel = {
 
 export type RegiaoCreateRequest = {
   nome: string;
+  cidade: string;
   municipio?: string;
   estado?: string;
-  bioma?: string;
+  tipoCliente: string;
   descricao?: string;
-  latitude?: number;
-  longitude?: number;
+  ativo?: boolean;
 };
 
 export type RegiaoUpdateRequest = Partial<RegiaoCreateRequest> & {
