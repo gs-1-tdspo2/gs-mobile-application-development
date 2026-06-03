@@ -1,15 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { colors } from '@/constants/colors';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.deepGreen },
+          headerTintColor: colors.offWhite,
+          headerTitleStyle: { fontWeight: '700' },
+        }}>
+        <Stack.Screen name="index" options={{ title: 'Amanaje' }} />
+        <Stack.Screen name="regioes/index" options={{ title: 'Regioes monitoradas' }} />
+        <Stack.Screen name="regioes/[id]" options={{ title: 'Detalhe da regiao' }} />
+        <Stack.Screen name="gerenciar-regioes" options={{ title: 'Gerenciar regioes' }} />
+        <Stack.Screen name="alertas" options={{ title: 'Alertas ambientais' }} />
+        <Stack.Screen name="indicadores" options={{ title: 'Indicadores' }} />
+      </Stack>
+    </>
   );
 }

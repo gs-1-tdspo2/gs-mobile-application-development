@@ -1,98 +1,92 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { AppButton } from '@/components/AppButton';
+import { AppCard } from '@/components/AppCard';
+import { RiskBadge } from '@/components/RiskBadge';
+import { colors } from '@/constants/colors';
+import { spacing } from '@/constants/spacing';
+import { screenStyles } from '@/styles/global';
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={screenStyles.safeArea}>
+      <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+        <View style={styles.hero}>
+          <Text style={styles.eyebrow}>Monitoramento climatico e ambiental</Text>
+          <Text style={styles.title}>Amanaje</Text>
+          <Text style={styles.description}>
+            MVP mobile para acompanhar regioes vulneraveis, risco ambiental, alertas e
+            indicadores regionais conectados a API Java da Global Solution.
+          </Text>
+          <View style={styles.badges}>
+            <RiskBadge nivel="BAIXO" />
+            <RiskBadge nivel="MODERADO" />
+            <RiskBadge nivel="ALTO" />
+            <RiskBadge nivel="CRITICO" />
+          </View>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <View style={styles.grid}>
+          <AppCard
+            title="Regioes"
+            subtitle="Visualize a lista inicial de regioes monitoradas e teste a rota dinamica.">
+            <AppButton label="Abrir regioes" href="/regioes" />
+          </AppCard>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <AppCard
+            title="Gerenciar regioes"
+            subtitle="Espaco reservado para o futuro fluxo de cadastro e manutencao.">
+            <AppButton label="Gerenciar" href="/gerenciar-regioes" variant="secondary" />
+          </AppCard>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+          <AppCard
+            title="Alertas"
+            subtitle="Acompanhe futuramente alertas ambientais e sua resolucao.">
+            <AppButton label="Ver alertas" href="/alertas" variant="secondary" />
+          </AppCard>
+
+          <AppCard
+            title="Indicadores"
+            subtitle="Consulte futuramente metricas regionais e sinais de risco.">
+            <AppButton label="Ver indicadores" href="/indicadores" variant="secondary" />
+          </AppCard>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  hero: {
+    backgroundColor: colors.deepGreen,
+    borderRadius: 8,
+    gap: spacing.sm,
+    padding: spacing.lg,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
+  eyebrow: {
+    color: colors.teal,
+    fontSize: 13,
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  title: {
+    color: colors.offWhite,
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  description: {
+    color: colors.offWhite,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  grid: {
+    gap: spacing.md,
   },
 });
