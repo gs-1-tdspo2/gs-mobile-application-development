@@ -1,6 +1,6 @@
-# Amanaje Mobile
+# Amanajé Mobile
 
-Aplicativo mobile do MVP Amanaje para monitoramento climatico e ambiental de regioes vulneraveis. Esta primeira entrega prepara a base em Expo, TypeScript, Expo Router, Axios e uma arquitetura inicial limpa para as proximas funcionalidades.
+Aplicativo mobile do MVP Amanajé para monitoramento climático e ambiental de regiões vulneráveis. Esta primeira entrega prepara a base em Expo, TypeScript, Expo Router, Axios e uma arquitetura inicial limpa para as próximas funcionalidades.
 
 ## Stack
 

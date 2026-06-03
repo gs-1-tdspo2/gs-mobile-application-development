@@ -14,10 +14,10 @@ export default function RootLayout() {
           headerTintColor: colors.offWhite,
           headerTitleStyle: { fontWeight: '700' },
         }}>
-        <Stack.Screen name="index" options={{ title: 'Amanaje' }} />
-        <Stack.Screen name="regioes/index" options={{ title: 'Regioes monitoradas' }} />
-        <Stack.Screen name="regioes/[id]" options={{ title: 'Detalhe da regiao' }} />
-        <Stack.Screen name="gerenciar-regioes" options={{ title: 'Gerenciar regioes' }} />
+        <Stack.Screen name="index" options={{ title: 'Amanajé' }} />
+        <Stack.Screen name="regioes/index" options={{ title: 'Regiões monitoradas' }} />
+        <Stack.Screen name="regioes/[id]" options={{ title: 'Detalhe da região' }} />
+        <Stack.Screen name="gerenciar-regioes" options={{ title: 'Gerenciar regiões' }} />
         <Stack.Screen name="alertas" options={{ title: 'Alertas ambientais' }} />
         <Stack.Screen name="indicadores" options={{ title: 'Indicadores' }} />
       </Stack>

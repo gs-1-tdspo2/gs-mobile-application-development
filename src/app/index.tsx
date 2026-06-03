@@ -13,8 +13,8 @@ export default function HomeScreen() {
     <SafeAreaView style={screenStyles.safeArea}>
       <ScrollView contentContainerStyle={screenStyles.scrollContent}>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Monitoramento climatico e ambiental</Text>
-          <Text style={styles.title}>Amanaje</Text>
+          <Text style={styles.eyebrow}>Monitoramento climático e ambiental</Text>
+          <Text style={styles.title}>Amanajé</Text>
           <Text style={styles.description}>
             MVP mobile para acompanhar regioes vulneraveis, risco ambiental, alertas e
             indicadores regionais conectados a API Java da Global Solution.
