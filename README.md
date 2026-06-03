@@ -1,56 +1,140 @@
-# Welcome to your Expo app 👋
+# Amanaje Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile do MVP Amanaje para monitoramento climatico e ambiental de regioes vulneraveis. Esta primeira entrega prepara a base em Expo, TypeScript, Expo Router, Axios e uma arquitetura inicial limpa para as proximas funcionalidades.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- Expo
+- React Native
+- TypeScript
+- Expo Router
+- Axios
+- ESLint com configuracao Expo
 
-   ```bash
-   npm install
-   ```
+## Requisitos
 
-2. Start the app
+- Node.js LTS
+- npm
+- Expo Go, Android Emulator, iOS Simulator ou navegador web
+- API Java Amanaje rodando na porta `8080`
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Instalar dependencias
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Configurar ambiente
 
-### Other setup steps
+Crie um arquivo `.env` na raiz usando `.env.example` como referencia:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:8080
+```
 
-## Learn more
+Notas de URL da API:
 
-To learn more about developing your project with Expo, look at the following resources:
+- Android Emulator: `http://10.0.2.2:8080`
+- iOS Simulator / Web: `http://localhost:8080`
+- Celular fisico com Expo Go: `http://YOUR_COMPUTER_LAN_IP:8080`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+O app usa `EXPO_PUBLIC_API_BASE_URL` e, se a variavel nao estiver definida, cai para `http://10.0.2.2:8080`.
 
-## Join the community
+## Rodar o app
 
-Join our community of developers creating universal apps.
+```bash
+npm run start
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Atalhos comuns no terminal do Expo:
+
+- `a`: abrir Android
+- `i`: abrir iOS, quando disponivel em macOS
+- `w`: abrir Web
+
+Tambem existem scripts diretos:
+
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
+## Verificacoes
+
+```bash
+npm run lint
+npx tsc --noEmit
+```
+
+## Funcionalidades iniciais
+
+- Tela Home/Dashboard placeholder com identidade Amanaje
+- Navegacao por Expo Router em `src/app`
+- Tela de regioes com layout de lista placeholder
+- Rota dinamica `/regioes/[id]`
+- Telas placeholder para Gerenciar Regioes, Alertas e Indicadores
+- Componentes reutilizaveis: `AppButton`, `AppCard`, `EmptyState`, `ErrorState`, `LoadingState`, `RiskBadge`
+- Constantes visuais para cores e espacamento
+- Cliente Axios configurado em `src/services/api.ts`
+- Services tipados preparados para endpoints da API Java
+
+## Estrutura principal
+
+```text
+src/
+  app/
+  components/
+  constants/
+  services/
+  styles/
+  types/
+  utils/
+```
+
+## Endpoints de referencia
+
+- `GET /api/health`
+- `GET /api/dashboard/summary`
+- `GET /api/regioes`
+- `GET /api/regioes/{id}`
+- `POST /api/regioes`
+- `PUT /api/regioes/{id}`
+- `DELETE /api/regioes/{id}`
+- `GET /api/regioes/{id}/risco-atual`
+- `GET /api/estacoes/regiao/{idRegiao}`
+- `GET /api/alertas`
+- `PUT /api/alertas/{id}/resolver`
+- `GET /api/indicadores-regionais`
+
+## Equipe
+
+- Integrante 1: nome / RM
+- Integrante 2: nome / RM
+- Integrante 3: nome / RM
+
+## Links da entrega
+
+- GitHub Classroom: adicionar link
+- Video no YouTube: adicionar link
+
+## Fluxo de branches planejado
+
+Esta branch inicial:
+
+1. `feat/mobile-foundation`
+
+Proximas branches recomendadas apos merge em `main`:
+
+1. `feat/dashboard-regioes-read`
+2. `feat/regioes-crud`
+3. `feat/region-detail-alerts`
+4. `feat/readme-demo-polish`
+
+Apos merge da foundation:
+
+```bash
+git checkout main
+git pull
+git branch -d feat/mobile-foundation
+```
