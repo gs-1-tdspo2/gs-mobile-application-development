@@ -29,16 +29,20 @@ npm install
 Crie um arquivo `.env` na raiz usando `.env.example` como referencia:
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:8080
+EXPO_PUBLIC_API_BASE_URL=https://gs-java-advanced.onrender.com
 ```
 
 Notas de URL da API:
 
-- Android Emulator: `http://10.0.2.2:8080`
-- iOS Simulator / Web: `http://localhost:8080`
-- Celular fisico com Expo Go: `http://YOUR_COMPUTER_LAN_IP:8080`
+- Demo Render: `https://gs-java-advanced.onrender.com`
+- Swagger UI: `https://gs-java-advanced.onrender.com/swagger-ui/index.html`
+- Android Emulator com API local: `http://10.0.2.2:8080`
+- iOS Simulator / Web com API local: `http://localhost:8080`
+- Celular fisico com Expo Go e API local: `http://YOUR_COMPUTER_LAN_IP:8080`
 
+Use a URL raiz da API como base URL. Nao use a URL do Swagger UI como `EXPO_PUBLIC_API_BASE_URL`.
 O app usa `EXPO_PUBLIC_API_BASE_URL` e, se a variavel nao estiver definida, cai para `http://10.0.2.2:8080`.
+Reinicie o Expo apos alterar o `.env`.
 
 ## Rodar o app
 
@@ -51,6 +55,8 @@ Antes de abrir o app, suba a API Java/Spring Boot localmente na porta `8080`. Es
 ```bash
 npm run start
 ```
+
+Para a demo mais simples, use a API no Render. O Render pode fazer cold start apos inatividade; se a primeira requisicao demorar ou falhar, aguarde alguns segundos e tente novamente.
 
 Atalhos comuns no terminal do Expo:
 
@@ -106,6 +112,28 @@ Checklist rápido para demonstração:
 
 Se o backend usar exclusão lógica, a região pode continuar na lista como inativa. Nesse caso, valide o badge de status em vez de esperar que ela desapareça.
 
+## Demo de Detalhe e Alertas
+
+A tela `Regiões > Detalhe` consulta:
+
+- `GET /api/regioes/{id}`
+- `GET /api/regioes/{id}/risco-atual`
+- `GET /api/estacoes/regiao/{idRegiao}`
+- `GET /api/regioes/{id}/leituras`
+
+A tela `Alertas` consulta e manipula:
+
+- `GET /api/alertas`
+- `PUT /api/alertas/{id}/resolver`
+
+Checklist rápido:
+
+1. Abra `Regiões`.
+2. Toque em uma região.
+3. Verifique risco atual, estações e últimas leituras.
+4. Abra `Alertas`.
+5. Use filtros e resolva um alerta ativo, se houver dado de demo disponível.
+
 ## Funcionalidades iniciais
 
 - Tela Home/Dashboard integrada ao resumo da API
@@ -113,6 +141,8 @@ Se o backend usar exclusão lógica, a região pode continuar na lista como inat
 - Tela de regioes integrada ao fluxo de leitura da API
 - Rota dinamica `/regioes/[id]` com prévia de detalhe
 - CRUD de Regiões pela API Java em `Gerenciar Regiões`
+- Região Detalhe com risco atual, estações e leituras
+- Alertas com listagem, filtros e ação de resolver
 - Telas placeholder para Gerenciar Regioes, Alertas e Indicadores
 - Componentes reutilizaveis: `AppButton`, `AppCard`, `EmptyState`, `ErrorState`, `LoadingState`, `RiskBadge`
 - Constantes visuais para cores e espacamento
