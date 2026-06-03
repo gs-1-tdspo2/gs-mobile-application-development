@@ -2,6 +2,7 @@ import { RiscoAtual, RiscoNivel } from '@/types/risco';
 
 export type Regiao = {
   id: number | string;
+  idRegiao?: number | string;
   nome: string;
   name?: string;
   cidade?: string;
@@ -11,12 +12,15 @@ export type Regiao = {
   state?: string;
   tipoCliente?: string;
   clientType?: string;
+  tipoArea?: string;
+  tipoVisibilidade?: string;
   bioma?: string;
   descricao?: string;
   description?: string;
   latitude?: number;
   longitude?: number;
   ativo?: boolean;
+  stAtivo?: string;
   status?: string;
   riscoAtual?: RiscoAtual | RiscoNivel;
   currentRisk?: RiscoAtual | RiscoNivel;
@@ -24,6 +28,8 @@ export type Regiao = {
   activeAlertsCount?: number;
   criadoEm?: string;
   atualizadoEm?: string;
+  dtCriadoEm?: string;
+  dtAtualizadoEm?: string;
   [key: string]: unknown;
 };
 

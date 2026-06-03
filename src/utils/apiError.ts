@@ -3,27 +3,27 @@ import { AxiosError } from 'axios';
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     if (error.code === 'ECONNABORTED') {
-      return 'A API demorou para responder. Verifique se o servidor Java esta rodando na porta 8080.';
+      return 'A API demorou para responder. Tente novamente.';
     }
 
     if (!error.response) {
-      return 'Nao foi possivel conectar a API. Verifique se o servidor Java esta rodando e se a URL base esta correta.';
+      return 'Não foi possível conectar à API. Aguarde alguns segundos e tente novamente.';
     }
 
     if (error.response.status === 404) {
-      return 'O recurso solicitado nao foi encontrado na API.';
+      return 'Registro não encontrado.';
     }
 
     if (error.response.status >= 500) {
-      return 'A API encontrou um erro interno. Tente novamente em instantes.';
+      return 'A API encontrou um erro interno. Aguarde alguns segundos e tente novamente.';
     }
 
     const message = getMessageFromResponse(error.response?.data);
-    return message ?? 'Nao foi possivel concluir a requisicao.';
+    return message ?? 'Não foi possível carregar os dados.';
   }
 
   if (error instanceof Error) {
-    return 'Nao foi possivel carregar os dados agora.';
+    return 'Não foi possível carregar os dados.';
   }
 
   return 'Erro inesperado ao acessar a API.';

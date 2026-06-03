@@ -1,10 +1,12 @@
 import { api } from '@/services/api';
 import { Regiao, RegiaoCreateRequest, RegiaoReadModel, RegiaoUpdateRequest } from '@/types/regiao';
-import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
+import { Estacao, EstacaoReadModel } from '@/types/estacao';
+import { Leitura, LeituraReadModel } from '@/types/leitura';
+import { RISCO_NIVEIS, RiscoAtual, RiscoAtualReadModel, RiscoNivel } from '@/types/risco';
 
 export async function getRegioes(): Promise<RegiaoReadModel[]> {
   const response = await api.get<Regiao[]>('/api/regioes');
-  return ensureArray(response.data).map(normalizeRegiao);
+  return ensureArray<Regiao>(response.data).map(normalizeRegiao);
 }
 
 export async function listarRegioes(): Promise<RegiaoReadModel[]> {
@@ -37,18 +39,84 @@ export async function deleteRegiao(id: number | string): Promise<void> {
   await api.delete(`/api/regioes/${id}`);
 }
 
+export async function getRiscoAtualByRegiao(
+  idRegiao: number | string,
+): Promise<RiscoAtualReadModel | null> {
+  const response = await api.get<RiscoAtual | null>(`/api/regioes/${idRegiao}/risco-atual`);
+  return response.data ? normalizeRiscoAtual(response.data) : null;
+}
+
+export async function getEstacoesByRegiao(idRegiao: number | string): Promise<EstacaoReadModel[]> {
+  const response = await api.get<Estacao[] | unknown>(`/api/estacoes/regiao/${idRegiao}`);
+  return ensureArray<Estacao>(response.data).map(normalizeEstacao);
+}
+
+export async function getLeiturasByRegiao(idRegiao: number | string): Promise<LeituraReadModel[]> {
+  const response = await api.get<Leitura[] | unknown>(`/api/regioes/${idRegiao}/leituras`);
+  return ensureArray<Leitura>(response.data).map(normalizeLeitura);
+}
+
 function normalizeRegiao(raw: Regiao): RegiaoReadModel {
   return {
-    id: pickValue(raw, ['id', 'codigo']) ?? '',
+    id: pickValue(raw, ['id', 'idRegiao', 'codigo']) ?? '',
     nome: pickString(raw, ['nome', 'name']) ?? 'Região sem nome',
     cidade: pickString(raw, ['cidade', 'city', 'municipio']),
     estado: pickString(raw, ['estado', 'state', 'uf']),
-    tipoCliente: pickString(raw, ['tipoCliente', 'clientType', 'tipo_cliente']),
+    tipoCliente: pickString(raw, [
+      'tipoCliente',
+      'clientType',
+      'tipo_cliente',
+      'tipoVisibilidade',
+      'tipoArea',
+    ]),
     descricao: pickString(raw, ['descricao', 'description']),
-    ativo: pickBoolean(raw, ['ativo', 'active']),
+    ativo: pickBoolean(raw, ['ativo', 'active', 'stAtivo']),
     status: pickString(raw, ['status', 'situacao']),
     riscoNivel: pickRisk(raw, ['riscoAtual', 'currentRisk', 'nivelRisco', 'risco']),
     alertasAtivos: pickNumber(raw, ['alertasAtivos', 'activeAlertsCount', 'quantidadeAlertasAtivos']),
+    raw,
+  };
+}
+
+function normalizeRiscoAtual(raw: RiscoAtual): RiscoAtualReadModel {
+  return {
+    nivel: pickRisk(raw, ['nivel', 'nivelRisco', 'nivelConsolidado', 'riskLevel']),
+    score: pickNumber(raw, ['score', 'pontuacao', 'scoreConsolidado']),
+    descricao: pickString(raw, ['descricao', 'description']),
+    atualizadoEm: pickString(raw, ['atualizadoEm', 'updatedAt', 'createdAt', 'calculadoEm']),
+    raw,
+  };
+}
+
+function normalizeEstacao(raw: Estacao): EstacaoReadModel {
+  return {
+    id: pickValue(raw, ['id', 'idEstacao']) ?? '',
+    nome: pickString(raw, ['nome', 'name']) ?? 'Estação sem nome',
+    codigo: pickString(raw, ['codigo', 'code', 'codigoEstacao']),
+    status: pickString(raw, ['status', 'statusEstacao']),
+    ativa: pickBoolean(raw, ['ativa', 'stAtivo']),
+    tipo: pickString(raw, ['tipo', 'type', 'tipoEstacao']),
+    ultimaLeituraEm: pickString(raw, ['ultimaLeitura', 'lastReadingAt', 'dtUltimaComunicacao']),
+    raw,
+  };
+}
+
+function normalizeLeitura(raw: Leitura): LeituraReadModel {
+  return {
+    id: pickValue(raw, ['id', 'idLeitura']) ?? '',
+    temperatura: pickNumber(raw, ['temperatura']),
+    umidade: pickNumber(raw, ['umidade']),
+    indiceUv: pickNumber(raw, ['indiceUv', 'uvIndex']),
+    chuva: pickNumber(raw, ['chuva', 'rainfall']),
+    gasFumaca: pickNumber(raw, ['gasFumaca', 'gasSmoke']),
+    distanciaAguaCm: pickNumber(raw, ['distanciaAguaCm']),
+    nivelAguaPercentual: pickNumber(raw, ['nivelAguaPercentual']),
+    inclinacaoGraus: pickNumber(raw, ['inclinacaoGraus']),
+    vibracao: pickNumber(raw, ['vibracao']),
+    pressaoHpa: pickNumber(raw, ['pressaoHpa']),
+    pm25: pickNumber(raw, ['pm25']),
+    pm10: pickNumber(raw, ['pm10']),
+    dataHora: pickString(raw, ['dataHora', 'timestamp', 'createdAt', 'dtLeitura', 'dtRecebidoEm']),
     raw,
   };
 }
@@ -66,9 +134,9 @@ function normalizePayload(payload: RegiaoCreateRequest | RegiaoUpdateRequest) {
   };
 }
 
-function ensureArray(value: unknown): Regiao[] {
+function ensureArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) {
-    return value as Regiao[];
+    return value as T[];
   }
 
   if (value && typeof value === 'object') {
@@ -77,15 +145,15 @@ function ensureArray(value: unknown): Regiao[] {
     const items = (value as { items?: unknown }).items;
 
     if (Array.isArray(content)) {
-      return content as Regiao[];
+      return content as T[];
     }
 
     if (Array.isArray(data)) {
-      return data as Regiao[];
+      return data as T[];
     }
 
     if (Array.isArray(items)) {
-      return items as Regiao[];
+      return items as T[];
     }
   }
 
@@ -123,7 +191,7 @@ function pickNumber(source: Record<string, unknown>, keys: string[]): number | u
     }
 
     if (typeof value === 'string') {
-      const parsed = Number(value);
+      const parsed = Number(value.replace(',', '.'));
       if (Number.isFinite(parsed)) {
         return parsed;
       }
@@ -143,10 +211,10 @@ function pickBoolean(source: Record<string, unknown>, keys: string[]): boolean |
 
     if (typeof value === 'string') {
       const normalized = value.toLowerCase();
-      if (['ativo', 'active', 'true'].includes(normalized)) {
+      if (['ativo', 'active', 'true', 's', 'sim', 'ativa'].includes(normalized)) {
         return true;
       }
-      if (['inativo', 'inactive', 'false'].includes(normalized)) {
+      if (['inativo', 'inactive', 'false', 'n', 'nao', 'não', 'inativa'].includes(normalized)) {
         return false;
       }
     }
