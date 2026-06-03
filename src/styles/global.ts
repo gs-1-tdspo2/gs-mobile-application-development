@@ -18,8 +18,8 @@ export const screenStyles = StyleSheet.create({
   },
   title: {
     color: colors.neutralText,
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
   },
   subtitle: {
     color: colors.mutedText,

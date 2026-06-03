@@ -4,7 +4,7 @@ import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native'
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 
-type AppButtonVariant = 'primary' | 'secondary' | 'ghost';
+type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 type AppButtonProps = {
   label: string;
@@ -61,12 +61,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   primary: {
-    backgroundColor: colors.deepGreen,
-    borderColor: colors.deepGreen,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   secondary: {
-    backgroundColor: colors.teal,
-    borderColor: colors.teal,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.borderStrong,
+  },
+  danger: {
+    backgroundColor: colors.criticalRed,
+    borderColor: colors.criticalRed,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -86,9 +90,12 @@ const styles = StyleSheet.create({
     color: colors.offWhite,
   },
   secondaryLabel: {
-    color: colors.deepGreen,
+    color: colors.primaryBase,
   },
   ghostLabel: {
-    color: colors.deepGreen,
+    color: colors.primaryBase,
+  },
+  dangerLabel: {
+    color: colors.offWhite,
   },
 });
