@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppCard } from '@/components/AppCard';
+import { AppShell } from '@/components/AppShell';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { FilterChip } from '@/components/FilterChip';
@@ -16,6 +17,7 @@ import { getRegioes } from '@/services/regioesService';
 import { screenStyles } from '@/styles/global';
 import { RegiaoReadModel } from '@/types/regiao';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { useResponsiveLayout } from '@/utils/responsive';
 
 type RegiaoFilter = 'todas' | 'governo' | 'ong' | 'risco';
 
@@ -31,6 +33,7 @@ export default function RegioesScreen() {
   const [selectedFilter, setSelectedFilter] = useState<RegiaoFilter>('todas');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { isDesktop } = useResponsiveLayout();
 
   const loadRegioes = useCallback(async () => {
     setIsLoading(true);
@@ -71,8 +74,13 @@ export default function RegioesScreen() {
   }, [regioes, selectedFilter]);
 
   return (
-    <SafeAreaView style={screenStyles.safeArea}>
-      <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+    <AppShell activeRoute="regioes">
+      <SafeAreaView style={screenStyles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[
+            screenStyles.scrollContent,
+            isDesktop && screenStyles.desktopScrollContent,
+          ]}>
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Regiões monitoradas</Text>
           <Text style={screenStyles.subtitle}>
@@ -112,14 +120,21 @@ export default function RegioesScreen() {
         ) : null}
 
         {!isLoading && !errorMessage && filteredRegioes.length > 0 ? (
-          <View style={styles.list}>
+          <View style={[styles.list, isDesktop && styles.desktopList]}>
             {filteredRegioes.map((regiao) => (
               <Link
                 key={String(regiao.id)}
                 href={{ pathname: '/regioes/[id]', params: { id: String(regiao.id) } }}
                 asChild>
-                <Pressable style={({ pressed }) => pressed && styles.pressed}>
-                  <AppCard title={regiao.nome} subtitle={regiao.descricao}>
+                <Pressable
+                  style={({ pressed }) => [
+                    isDesktop && styles.desktopCardPressable,
+                    pressed && styles.pressed,
+                  ]}>
+                  <AppCard
+                    title={regiao.nome}
+                    subtitle={regiao.descricao}
+                    style={isDesktop && styles.desktopCard}>
                     <View style={styles.cardContent}>
                       <Text style={styles.meta}>{formatLocation(regiao)}</Text>
                       <View style={styles.badges}>
@@ -145,8 +160,9 @@ export default function RegioesScreen() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </AppShell>
   );
 }
 
@@ -172,6 +188,19 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  desktopList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  desktopCardPressable: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 360,
+  },
+  desktopCard: {
+    minHeight: 178,
   },
   cardContent: {
     gap: spacing.sm,

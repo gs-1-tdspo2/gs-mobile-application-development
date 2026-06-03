@@ -1,12 +1,15 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsPanel } from '@/components/AnalyticsPanel';
 import { AppCard } from '@/components/AppCard';
+import { AppShell } from '@/components/AppShell';
 import { MetricCard } from '@/components/MetricCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { screenStyles } from '@/styles/global';
+import { useResponsiveLayout } from '@/utils/responsive';
 
 const indicadoresDemo = [
   { label: 'Cobertura regional', value: '8', supportingText: 'Regiões com dados públicos na API' },
@@ -21,9 +24,16 @@ const rankingDemo = [
 ];
 
 export default function IndicadoresScreen() {
+  const { isDesktop } = useResponsiveLayout();
+
   return (
-    <SafeAreaView style={screenStyles.safeArea}>
-      <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+    <AppShell activeRoute="indicadores">
+      <SafeAreaView style={screenStyles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[
+            screenStyles.scrollContent,
+            isDesktop && screenStyles.desktopScrollContent,
+          ]}>
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Indicadores regionais</Text>
           <Text style={screenStyles.subtitle}>
@@ -32,7 +42,7 @@ export default function IndicadoresScreen() {
           </Text>
         </View>
 
-        <View style={styles.metrics}>
+        <View style={[styles.metrics, isDesktop && styles.desktopMetrics]}>
           {indicadoresDemo.map((indicador) => (
             <MetricCard
               key={indicador.label}
@@ -40,39 +50,80 @@ export default function IndicadoresScreen() {
               value={indicador.value}
               supportingText={indicador.supportingText}
               accentColor={colors.primary}
+              style={isDesktop && styles.desktopMetric}
             />
           ))}
         </View>
 
-        <AppCard
-          title="Ranking de atenção"
-          subtitle="Barras simples mantêm a tela leve, sem dependência de gráficos.">
-          <View style={styles.ranking}>
-            {rankingDemo.map((item) => (
-              <View key={item.nome} style={styles.rankingItem}>
-                <View style={styles.rankingHeader}>
-                  <Text style={styles.regionName}>{item.nome}</Text>
-                  <Text style={styles.percent}>{item.percentual}%</Text>
+        <View style={[styles.contentColumns, isDesktop && styles.desktopColumns]}>
+          <AppCard
+            title="Ranking de atenção"
+            subtitle="Barras simples mantêm a tela leve, sem dependência de gráficos."
+            style={isDesktop && styles.rankingCard}>
+            <View style={styles.ranking}>
+              {rankingDemo.map((item) => (
+                <View key={item.nome} style={styles.rankingItem}>
+                  <View style={styles.rankingHeader}>
+                    <Text style={styles.regionName}>{item.nome}</Text>
+                    <Text style={styles.percent}>{item.percentual}%</Text>
+                  </View>
+                  <View style={styles.track}>
+                    <View style={[styles.progress, { width: `${item.percentual}%` }]} />
+                  </View>
                 </View>
-                <View style={styles.track}>
-                  <View style={[styles.progress, { width: `${item.percentual}%` }]} />
-                </View>
-              </View>
-            ))}
-          </View>
-        </AppCard>
+              ))}
+            </View>
+          </AppCard>
 
-        <AppCard title="Status da entrega" subtitle="Tela preparada para leitura futura da API.">
-          <StatusBadge status="Em desenvolvimento" />
-        </AppCard>
-      </ScrollView>
-    </SafeAreaView>
+          <AnalyticsPanel
+            title="Analytics leve"
+            subtitle="Painel indigo para web, alinhado ao Stitch desktop sem dependência de biblioteca gráfica."
+            style={isDesktop && styles.analyticsCard}>
+            <View style={styles.analyticsContent}>
+              <StatusBadge status="Em desenvolvimento" />
+              <Text style={styles.analyticsText}>
+                Próxima evolução: consumir /api/indicadores-regionais e substituir os dados de
+                demonstração por métricas reais.
+              </Text>
+            </View>
+          </AnalyticsPanel>
+        </View>
+        </ScrollView>
+      </SafeAreaView>
+    </AppShell>
   );
 }
 
 const styles = StyleSheet.create({
   metrics: {
     gap: spacing.sm,
+  },
+  desktopMetrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  desktopMetric: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 220,
+  },
+  contentColumns: {
+    gap: spacing.md,
+  },
+  desktopColumns: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  rankingCard: {
+    flexBasis: '62%',
+    flexGrow: 1,
+    minWidth: 520,
+  },
+  analyticsCard: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 300,
   },
   ranking: {
     gap: spacing.md,
@@ -107,5 +158,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 999,
     height: 8,
+  },
+  analyticsContent: {
+    gap: spacing.md,
+  },
+  analyticsText: {
+    color: colors.analyticsSurface,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppShell } from '@/components/AppShell';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { FilterChip } from '@/components/FilterChip';
@@ -29,6 +30,7 @@ import {
 import { screenStyles } from '@/styles/global';
 import { RegiaoCreateRequest, RegiaoReadModel, RegiaoUpdateRequest } from '@/types/regiao';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { useResponsiveLayout } from '@/utils/responsive';
 
 type ClientType = 'Governo / Defesa Civil' | 'ONG';
 
@@ -68,6 +70,7 @@ export default function GerenciarRegioesScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const { isDesktop } = useResponsiveLayout();
 
   const formTitle = editingRegiao ? 'Editar região' : 'Nova região';
   const submitLabel = isSaving
@@ -205,11 +208,16 @@ export default function GerenciarRegioesScreen() {
   }
 
   return (
-    <SafeAreaView style={screenStyles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+    <AppShell activeRoute="gerenciar">
+      <SafeAreaView style={screenStyles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardView}>
+          <ScrollView
+            contentContainerStyle={[
+              screenStyles.scrollContent,
+              isDesktop && screenStyles.desktopScrollContent,
+            ]}>
           <View style={screenStyles.header}>
             <Text style={screenStyles.title}>Gerenciar Regiões</Text>
             <Text style={screenStyles.subtitle}>
@@ -234,7 +242,10 @@ export default function GerenciarRegioesScreen() {
           </AppCard>
 
           {isFormOpen ? (
-            <AppCard title={formTitle} subtitle="Campos marcados como obrigatórios são validados antes do envio.">
+            <AppCard
+              title={formTitle}
+              subtitle="Campos marcados como obrigatórios são validados antes do envio."
+              style={isDesktop && styles.desktopFormCard}>
               <View style={styles.form}>
                 {validationMessage ? (
                   <InlineFeedback type="error" message={validationMessage} />
@@ -336,9 +347,13 @@ export default function GerenciarRegioesScreen() {
           ) : null}
 
           {!isLoading && !errorMessage && sortedRegioes.length > 0 ? (
-            <View style={styles.list}>
+            <View style={[styles.list, isDesktop && styles.desktopList]}>
               {sortedRegioes.map((regiao) => (
-                <AppCard key={String(regiao.id)} title={regiao.nome} subtitle={regiao.descricao}>
+                <AppCard
+                  key={String(regiao.id)}
+                  title={regiao.nome}
+                  subtitle={regiao.descricao}
+                  style={isDesktop && styles.desktopListCard}>
                   <View style={styles.cardContent}>
                     <Text style={styles.meta}>{formatLocation(regiao)}</Text>
                     <View style={styles.badges}>
@@ -369,9 +384,10 @@ export default function GerenciarRegioesScreen() {
               ))}
             </View>
           ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </AppShell>
   );
 }
 
@@ -520,6 +536,11 @@ const styles = StyleSheet.create({
   form: {
     gap: spacing.md,
   },
+  desktopFormCard: {
+    alignSelf: 'flex-start',
+    maxWidth: 760,
+    width: '100%',
+  },
   fieldGroup: {
     gap: spacing.xs,
   },
@@ -551,6 +572,16 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  desktopList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  desktopListCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 360,
   },
   cardContent: {
     gap: spacing.sm,

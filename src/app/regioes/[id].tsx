@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppShell } from '@/components/AppShell';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
@@ -27,6 +28,7 @@ import { RegiaoReadModel } from '@/types/regiao';
 import { RiscoAtualReadModel } from '@/types/risco';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { formatDate } from '@/utils/formatDate';
+import { useResponsiveLayout } from '@/utils/responsive';
 
 type SectionErrors = {
   regiao?: string;
@@ -44,6 +46,7 @@ export default function RegiaoDetalheScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sectionErrors, setSectionErrors] = useState<SectionErrors>({});
+  const { isDesktop } = useResponsiveLayout();
 
   const latestReading = leituras[0];
   const effectiveRisk = risco?.nivel ?? regiao?.riscoNivel;
@@ -123,8 +126,13 @@ export default function RegiaoDetalheScreen() {
   }, [loadDetails]);
 
   return (
-    <SafeAreaView style={screenStyles.safeArea}>
-      <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+    <AppShell activeRoute="regioes">
+      <SafeAreaView style={screenStyles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[
+            screenStyles.scrollContent,
+            isDesktop && screenStyles.desktopScrollContent,
+          ]}>
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>{regiao?.nome ?? `Região ${id ?? ''}`}</Text>
           <Text style={screenStyles.subtitle}>
@@ -157,65 +165,76 @@ export default function RegiaoDetalheScreen() {
               </View>
             </AppCard>
 
-            <AppCard title="Risco atual" subtitle="Consolidado retornado pela API para esta região.">
-              {sectionErrors.risco ? (
-                <ErrorState message={sectionErrors.risco} onRetry={loadDetails} />
-              ) : risco || effectiveRisk ? (
-                <View style={styles.sectionStack}>
-                  {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
-                  {risco?.score !== undefined ? (
-                    <Text style={styles.metricLine}>Score consolidado: {risco.score}</Text>
-                  ) : null}
-                  {risco?.descricao ? <Text style={styles.meta}>{risco.descricao}</Text> : null}
-                  <Text style={styles.meta}>Atualizado em: {formatDate(risco?.atualizadoEm)}</Text>
-                </View>
-              ) : (
-                <EmptyState
-                  title="Risco não informado"
-                  description="A API não retornou risco atual para esta região."
-                />
-              )}
-            </AppCard>
+            <View style={[styles.sectionStack, isDesktop && styles.desktopColumns]}>
+              <AppCard
+                title="Risco atual"
+                subtitle="Consolidado retornado pela API para esta região."
+                style={isDesktop && styles.desktopColumnCard}>
+                {sectionErrors.risco ? (
+                  <ErrorState message={sectionErrors.risco} onRetry={loadDetails} />
+                ) : risco || effectiveRisk ? (
+                  <View style={styles.sectionStack}>
+                    {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
+                    {risco?.score !== undefined ? (
+                      <Text style={styles.metricLine}>Score consolidado: {risco.score}</Text>
+                    ) : null}
+                    {risco?.descricao ? <Text style={styles.meta}>{risco.descricao}</Text> : null}
+                    <Text style={styles.meta}>Atualizado em: {formatDate(risco?.atualizadoEm)}</Text>
+                  </View>
+                ) : (
+                  <EmptyState
+                    title="Risco não informado"
+                    description="A API não retornou risco atual para esta região."
+                  />
+                )}
+              </AppCard>
 
-            <AppCard title="Estações IoT" subtitle="Estações vinculadas à região monitorada.">
-              {sectionErrors.estacoes ? (
-                <ErrorState message={sectionErrors.estacoes} onRetry={loadDetails} />
-              ) : estacoes.length > 0 ? (
-                <View style={styles.sectionStack}>
-                  {estacoes.map((estacao) => (
-                    <View key={String(estacao.id)} style={styles.listRow}>
-                      <View style={styles.rowText}>
-                        <Text style={styles.rowTitle}>{estacao.nome}</Text>
-                        <Text style={styles.meta}>{estacao.codigo ?? estacao.tipo ?? 'Sem código'}</Text>
-                        <Text style={styles.meta}>
-                          Última comunicação: {formatDate(estacao.ultimaLeituraEm)}
-                        </Text>
+              <AppCard
+                title="Estações IoT"
+                subtitle="Estações vinculadas à região monitorada."
+                style={isDesktop && styles.desktopColumnCard}>
+                {sectionErrors.estacoes ? (
+                  <ErrorState message={sectionErrors.estacoes} onRetry={loadDetails} />
+                ) : estacoes.length > 0 ? (
+                  <View style={styles.sectionStack}>
+                    {estacoes.map((estacao) => (
+                      <View key={String(estacao.id)} style={styles.listRow}>
+                        <View style={styles.rowText}>
+                          <Text style={styles.rowTitle}>{estacao.nome}</Text>
+                          <Text style={styles.meta}>{estacao.codigo ?? estacao.tipo ?? 'Sem código'}</Text>
+                          <Text style={styles.meta}>
+                            Última comunicação: {formatDate(estacao.ultimaLeituraEm)}
+                          </Text>
+                        </View>
+                        <StatusBadge status={estacao.ativa === false ? 'Inativo' : 'Ativo'} />
                       </View>
-                      <StatusBadge status={estacao.ativa === false ? 'Inativo' : 'Ativo'} />
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  title="Nenhuma estação encontrada"
-                  description="A API não retornou estações para esta região."
-                />
-              )}
-            </AppCard>
+                    ))}
+                  </View>
+                ) : (
+                  <EmptyState
+                    title="Nenhuma estação encontrada"
+                    description="A API não retornou estações para esta região."
+                  />
+                )}
+              </AppCard>
+            </View>
 
-            <View style={styles.sectionStack}>
-              <AppCard title="Últimas leituras" subtitle="Leitura mais recente em cartões compactos.">
+            <View style={[styles.sectionStack, isDesktop && styles.desktopColumns]}>
+              <AppCard
+                title="Últimas leituras"
+                subtitle="Leitura mais recente em cartões compactos."
+                style={isDesktop && styles.desktopMainCard}>
                 {sectionErrors.leituras ? (
                   <ErrorState message={sectionErrors.leituras} onRetry={loadDetails} />
                 ) : latestReading ? (
-                  <View style={styles.readingsGrid}>
+                  <View style={[styles.readingsGrid, isDesktop && styles.desktopReadingsGrid]}>
                     {readingMetrics.map((metric) => (
                       <MetricCard
                         key={metric.label}
                         label={metric.label}
                         value={metric.value}
                         supportingText={`Data: ${formatDate(latestReading.dataHora)}`}
-                        style={styles.readingMetric}
+                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
                       />
                     ))}
                     {latestReading.nivelAguaPercentual !== undefined ? (
@@ -224,7 +243,7 @@ export default function RegiaoDetalheScreen() {
                         value={formatMetric(latestReading.nivelAguaPercentual, '%')}
                         supportingText={`Distância: ${formatMetric(latestReading.distanciaAguaCm, 'cm')}`}
                         accentColor={colors.primary}
-                        style={styles.readingMetric}
+                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
                       />
                     ) : null}
                     {latestReading.pm25 !== undefined || latestReading.pm10 !== undefined ? (
@@ -233,7 +252,7 @@ export default function RegiaoDetalheScreen() {
                         value={`PM2.5 ${formatMetric(latestReading.pm25)}`}
                         supportingText={`PM10 ${formatMetric(latestReading.pm10)}`}
                         accentColor={colors.warningOrange}
-                        style={styles.readingMetric}
+                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
                       />
                     ) : null}
                   </View>
@@ -247,14 +266,16 @@ export default function RegiaoDetalheScreen() {
 
               <AppCard
                 title="Alertas recentes"
-                subtitle="Acesse a lista consolidada de alertas ambientais.">
+                subtitle="Acesse a lista consolidada de alertas ambientais."
+                style={isDesktop && styles.desktopSideCard}>
                 <AppButton label="Ir para Alertas" href="/alertas" />
               </AppCard>
             </View>
           </>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </AppShell>
   );
 }
 
@@ -281,6 +302,26 @@ const styles = StyleSheet.create({
   },
   sectionStack: {
     gap: spacing.md,
+  },
+  desktopColumns: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  desktopColumnCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 360,
+  },
+  desktopMainCard: {
+    flexBasis: '68%',
+    flexGrow: 1,
+    minWidth: 520,
+  },
+  desktopSideCard: {
+    flexBasis: '28%',
+    flexGrow: 1,
+    minWidth: 280,
   },
   meta: {
     color: colors.mutedText,
@@ -338,7 +379,17 @@ const styles = StyleSheet.create({
   readingsGrid: {
     gap: spacing.sm,
   },
+  desktopReadingsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   readingMetric: {
     minHeight: 108,
+  },
+  desktopReadingMetric: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 180,
   },
 });

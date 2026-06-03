@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/AppButton';
 import { AppCard } from '@/components/AppCard';
+import { AppShell } from '@/components/AppShell';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { FilterChip } from '@/components/FilterChip';
@@ -18,6 +19,7 @@ import { screenStyles } from '@/styles/global';
 import { AlertaReadModel } from '@/types/alerta';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { formatDate } from '@/utils/formatDate';
+import { useResponsiveLayout } from '@/utils/responsive';
 
 type AlertFilter = 'todos' | 'ativos' | 'criticos' | 'resolvidos';
 
@@ -40,6 +42,7 @@ export default function AlertasScreen() {
   const [resolvingId, setResolvingId] = useState<number | string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const { isDesktop } = useResponsiveLayout();
 
   const loadAlertas = useCallback(async () => {
     setIsLoading(true);
@@ -129,8 +132,13 @@ export default function AlertasScreen() {
   }
 
   return (
-    <SafeAreaView style={screenStyles.safeArea}>
-      <ScrollView contentContainerStyle={screenStyles.scrollContent}>
+    <AppShell activeRoute="alertas">
+      <SafeAreaView style={screenStyles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[
+            screenStyles.scrollContent,
+            isDesktop && screenStyles.desktopScrollContent,
+          ]}>
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Alertas ambientais</Text>
           <Text style={screenStyles.subtitle}>
@@ -140,19 +148,26 @@ export default function AlertasScreen() {
 
         {feedback ? <InlineFeedback type={feedback.type} message={feedback.message} /> : null}
 
-        <View style={styles.summaryGrid}>
-          <MetricCard label="Total" value={summary.total} supportingText="Alertas retornados" />
+        <View style={[styles.summaryGrid, isDesktop && styles.desktopSummaryGrid]}>
+          <MetricCard
+            label="Total"
+            value={summary.total}
+            supportingText="Alertas retornados"
+            style={isDesktop && styles.summaryMetric}
+          />
           <MetricCard
             label="Ativos"
             value={summary.ativos}
             supportingText="Aguardando ação"
             accentColor={colors.warningOrange}
+            style={isDesktop && styles.summaryMetric}
           />
           <MetricCard
             label="Críticos"
             value={summary.criticos}
             supportingText="Severidade máxima"
             accentColor={colors.criticalRed}
+            style={isDesktop && styles.summaryMetric}
           />
         </View>
 
@@ -188,7 +203,7 @@ export default function AlertasScreen() {
         ) : null}
 
         {!isLoading && !errorMessage && filteredAlertas.length > 0 ? (
-          <View style={styles.list}>
+          <View style={[styles.list, isDesktop && styles.desktopList]}>
             {filteredAlertas.map((alerta) => {
               const isCritical = alerta.nivel === 'CRITICO';
 
@@ -197,7 +212,10 @@ export default function AlertasScreen() {
                   key={String(alerta.id)}
                   title={alerta.titulo}
                   subtitle={alerta.descricao}
-                  style={isCritical && !alerta.resolvido ? styles.criticalCard : undefined}>
+                  style={[
+                    isDesktop && styles.desktopAlertCard,
+                    isCritical && !alerta.resolvido ? styles.criticalCard : undefined,
+                  ]}>
                   <View style={styles.cardContent}>
                     <View style={styles.badges}>
                       {alerta.nivel ? <RiskBadge nivel={alerta.nivel} /> : null}
@@ -231,8 +249,9 @@ export default function AlertasScreen() {
             })}
           </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </AppShell>
   );
 }
 
@@ -260,6 +279,16 @@ const styles = StyleSheet.create({
   summaryGrid: {
     gap: spacing.sm,
   },
+  desktopSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  summaryMetric: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 220,
+  },
   filters: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -267,6 +296,16 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  desktopList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  desktopAlertCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 380,
   },
   criticalCard: {
     backgroundColor: colors.criticalSoftBackground,
