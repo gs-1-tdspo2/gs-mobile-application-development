@@ -13,6 +13,13 @@ export const screenStyles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  desktopScrollContent: {
+    alignSelf: 'center',
+    maxWidth: 1280,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
+    width: '100%',
+  },
   header: {
     gap: spacing.sm,
   },
