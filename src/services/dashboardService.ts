@@ -18,7 +18,12 @@ export async function verificarSaudeApi(): Promise<unknown> {
 
 function normalizeDashboardSummary(raw: DashboardSummaryRaw): DashboardSummary {
   return {
-    totalRegioes: pickNumber(raw, ['totalRegioes', 'totalRegions', 'regioesMonitoradas']),
+    totalRegioes: pickNumber(raw, [
+      'totalRegioes',
+      'totalRegioesAtivas',
+      'totalRegions',
+      'regioesMonitoradas',
+    ]),
     alertasAtivos: pickNumber(raw, ['alertasAtivos', 'totalAlertasAtivos', 'activeAlerts']),
     alertasCriticos: pickNumber(raw, [
       'alertasCriticos',
@@ -26,7 +31,12 @@ function normalizeDashboardSummary(raw: DashboardSummaryRaw): DashboardSummary {
       'criticalAlerts',
       'regioesEmRiscoCritico',
     ]),
-    maiorRiscoAtual: pickRisk(raw, ['maiorRiscoAtual', 'highestCurrentRisk', 'maiorRisco']),
+    maiorRiscoAtual: pickRisk(raw, [
+      'maiorRiscoAtual',
+      'maiorNivelRiscoAtual',
+      'highestCurrentRisk',
+      'maiorRisco',
+    ]),
     atualizadoEm: pickString(raw, ['atualizadoEm', 'updatedAt', 'ultimaAtualizacao']),
     raw,
   };

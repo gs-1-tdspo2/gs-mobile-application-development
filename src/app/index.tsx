@@ -47,7 +47,7 @@ export default function HomeScreen() {
           <Text style={styles.eyebrow}>Monitoramento climático e ambiental</Text>
           <Text style={styles.title}>Amanajé</Text>
           <Text style={styles.description}>
-            MVP mobile para acompanhar regioes vulneraveis, risco ambiental, alertas e
+            MVP mobile para acompanhar regiões vulneráveis, risco ambiental, alertas e
             indicadores regionais conectados a API Java da Global Solution.
           </Text>
           <View style={styles.badges}>
@@ -65,7 +65,7 @@ export default function HomeScreen() {
         {!isLoading && !errorMessage && !hasDashboardData(summary) ? (
           <EmptyState
             title="Resumo ainda indisponível"
-            description="Quando a API retornar dados do dashboard, os indicadores principais aparecerao aqui."
+            description="Quando a API retornar dados do dashboard, os indicadores principais aparecerão aqui."
           />
         ) : null}
 
@@ -107,13 +107,13 @@ export default function HomeScreen() {
 
           <AppCard
             title="Gerenciar Regiões"
-            subtitle="Espaço reservado para o futuro fluxo de cadastro e manutenção.">
+            subtitle="Crie, edite e remova regiões monitoradas pela API.">
             <AppButton label="Gerenciar" href="/gerenciar-regioes" variant="secondary" />
           </AppCard>
 
           <AppCard
             title="Alertas"
-            subtitle="Acompanhe futuramente alertas ambientais e sua resolução.">
+            subtitle="Acompanhe alertas ambientais e resolva ocorrências ativas.">
             <AppButton label="Ver alertas" href="/alertas" variant="secondary" />
           </AppCard>
 
