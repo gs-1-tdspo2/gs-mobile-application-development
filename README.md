@@ -42,6 +42,12 @@ O app usa `EXPO_PUBLIC_API_BASE_URL` e, se a variavel nao estiver definida, cai 
 
 ## Rodar o app
 
+Antes de abrir o app, suba a API Java/Spring Boot localmente na porta `8080`. Esta branch integra as leituras reais de:
+
+- `GET /api/dashboard/summary`
+- `GET /api/regioes`
+- `GET /api/regioes/{id}`
+
 ```bash
 npm run start
 ```
@@ -67,12 +73,26 @@ npm run lint
 npx tsc --noEmit
 ```
 
+## Rodar API + mobile juntos
+
+1. Inicie a API Java na porta `8080`.
+2. Configure `EXPO_PUBLIC_API_BASE_URL` no `.env` conforme o ambiente.
+3. Inicie o app Expo com `npm run start`.
+
+URLs comuns:
+
+- Android Emulator: `http://10.0.2.2:8080`
+- iOS Simulator / Web: `http://localhost:8080`
+- Celular físico com Expo Go: `http://YOUR_COMPUTER_LAN_IP:8080`
+
+Se a API estiver offline, as telas de Dashboard e Regiões exibem uma mensagem de erro com ação de tentar novamente.
+
 ## Funcionalidades iniciais
 
-- Tela Home/Dashboard placeholder com identidade Amanaje
+- Tela Home/Dashboard integrada ao resumo da API
 - Navegacao por Expo Router em `src/app`
-- Tela de regioes com layout de lista placeholder
-- Rota dinamica `/regioes/[id]`
+- Tela de regioes integrada ao fluxo de leitura da API
+- Rota dinamica `/regioes/[id]` com prévia de detalhe
 - Telas placeholder para Gerenciar Regioes, Alertas e Indicadores
 - Componentes reutilizaveis: `AppButton`, `AppCard`, `EmptyState`, `ErrorState`, `LoadingState`, `RiskBadge`
 - Constantes visuais para cores e espacamento
