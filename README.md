@@ -35,6 +35,7 @@ Amanajé Mobile é o aplicativo React Native do MVP de monitoramento climático 
 - Ação para resolver alertas.
 - Tela de indicadores regionais.
 - Estados de loading, erro, vazio, sucesso, validação e confirmação.
+- Layout responsivo para Web com sidebar desktop, grids e largura máxima de dashboard.
 
 ## API
 
@@ -104,6 +105,37 @@ Atalhos do Expo:
 - `i`: abrir iOS, quando disponível em macOS
 - `w`: abrir Web
 
+## Preview Web
+
+Para abrir diretamente no navegador:
+
+```bash
+npx expo start --web
+```
+
+Para gerar a versão estática usada em deploy:
+
+```bash
+npx expo export -p web
+```
+
+O export gera a pasta `dist`.
+
+## Deploy Web na Vercel
+
+O projeto inclui `vercel.json` com:
+
+- Build command: `npx expo export -p web`
+- Output directory: `dist`
+
+Configure a variável de ambiente na Vercel:
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=https://gs-java-advanced.onrender.com
+```
+
+A URL do Swagger é apenas documentação. A URL base do app web deve continuar sendo `https://gs-java-advanced.onrender.com`.
+
 ## Verificações
 
 ```bash
@@ -171,6 +203,11 @@ src/
   utils/
 ```
 
+## Referências de Design
+
+- `DESIGN.md`: referência mobile criada a partir do Stitch.
+- `WEB_DESIGN.md`: referência responsiva web/desktop com sidebar, grids e painéis indigo.
+
 ## Histórico de Branches
 
 O app foi construído por branches sequenciais de entrega:
@@ -181,3 +218,4 @@ O app foi construído por branches sequenciais de entrega:
 4. `feat/regioes-crud`
 5. `feat/region-detail-alerts`
 6. `feat/readme-demo-polish`
+7. `feat/web-responsive-layout`
