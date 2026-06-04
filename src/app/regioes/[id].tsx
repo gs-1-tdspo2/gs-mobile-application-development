@@ -136,7 +136,7 @@ export default function RegiaoDetalheScreen() {
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>{regiao?.nome ?? `Região ${id ?? ''}`}</Text>
           <Text style={screenStyles.subtitle}>
-            Monitoramento regional com risco atual, estações IoT e últimas leituras da API.
+            Monitoramento regional com risco atual, estações IoT e últimas leituras ambientais.
           </Text>
         </View>
 
@@ -150,7 +150,7 @@ export default function RegiaoDetalheScreen() {
               <View style={styles.identity}>
                 {sectionErrors.regiao ? (
                   <Text style={styles.warningText}>
-                    Não foi possível carregar /api/regioes/{id}. Exibindo dados parciais quando
+                    Não foi possível carregar todos os dados de identidade. Exibindo dados parciais
                     disponíveis.
                   </Text>
                 ) : null}
@@ -168,7 +168,7 @@ export default function RegiaoDetalheScreen() {
             <View style={[styles.sectionStack, isDesktop && styles.desktopColumns]}>
               <AppCard
                 title="Risco atual"
-                subtitle="Consolidado retornado pela API para esta região."
+                subtitle="Consolidado ambiental para esta região."
                 variant="elevated"
                 style={isDesktop && styles.desktopColumnCard}>
                 {sectionErrors.risco ? (
@@ -185,7 +185,7 @@ export default function RegiaoDetalheScreen() {
                 ) : (
                   <EmptyState
                     title="Risco não informado"
-                    description="A API não retornou risco atual para esta região."
+                    description="Nenhum risco atual foi encontrado para esta região."
                   />
                 )}
               </AppCard>
@@ -215,7 +215,7 @@ export default function RegiaoDetalheScreen() {
                 ) : (
                   <EmptyState
                     title="Nenhuma estação encontrada"
-                    description="A API não retornou estações para esta região."
+                    description="Nenhuma estação foi encontrada para esta região."
                   />
                 )}
               </AppCard>
@@ -262,7 +262,7 @@ export default function RegiaoDetalheScreen() {
                 ) : (
                   <EmptyState
                     title="Nenhuma leitura encontrada"
-                    description="A API não retornou leituras recentes para esta região."
+                    description="Nenhuma leitura recente foi encontrada para esta região."
                   />
                 )}
               </AppCard>

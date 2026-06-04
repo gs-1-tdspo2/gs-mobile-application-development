@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/spacing';
 
 type FilterChipProps = {
   label: string;
@@ -30,29 +29,33 @@ const styles = StyleSheet.create({
   chip: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   hovered: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryAccent,
+    backgroundColor: '#F1F3FF',
+    borderColor: colors.primary100,
   },
   selected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary200,
   },
   pressed: {
-    opacity: 0.9,
+    backgroundColor: colors.primary100,
+    opacity: 0.95,
     transform: [{ translateY: 1 }],
   },
   label: {
     color: colors.mutedText,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   selectedLabel: {
-    color: colors.offWhite,
+    color: colors.primary,
+    fontWeight: '700',
   },
 });

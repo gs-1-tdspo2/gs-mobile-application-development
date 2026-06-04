@@ -29,21 +29,27 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: 6,
     borderWidth: 1,
-    padding: spacing.lg,
-    shadowColor: colors.navDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    boxShadow:
+      '0px 2px 1px -1px rgba(0,0,0,.2), 0px 1px 1px 0px rgba(0,0,0,.14), 0px 1px 3px 0px rgba(0,0,0,.12)',
+    elevation: 1,
+    padding: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
   },
   elevated: {
-    borderColor: '#D8DEEA',
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
+    borderColor: colors.border,
+    boxShadow:
+      '0px 3px 1px -2px rgba(0,0,0,.2), 0px 2px 2px 0px rgba(0,0,0,.14), 0px 1px 5px 0px rgba(0,0,0,.12)',
+    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
   },
   critical: {
-    backgroundColor: colors.criticalSoftBackground,
+    backgroundColor: colors.surface,
     borderColor: '#F2B8B5',
     borderLeftColor: colors.criticalRed,
     borderLeftWidth: 4,
@@ -53,12 +59,12 @@ const styles = StyleSheet.create({
     borderColor: colors.analyticsBorder,
   },
   compact: {
-    padding: spacing.md,
+    padding: 16,
   },
   title: {
     color: colors.neutralText,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   analyticsTitle: {
     color: colors.offWhite,

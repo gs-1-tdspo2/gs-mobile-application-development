@@ -15,8 +15,8 @@ export const screenStyles = StyleSheet.create({
   },
   desktopScrollContent: {
     alignSelf: 'center',
-    maxWidth: 1280,
-    padding: spacing.xl,
+    maxWidth: 1320,
+    padding: 24,
     paddingBottom: spacing.xxl,
     width: '100%',
   },
@@ -25,7 +25,7 @@ export const screenStyles = StyleSheet.create({
   },
   title: {
     color: colors.neutralText,
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
   },
   subtitle: {

@@ -142,7 +142,7 @@ export default function AlertasScreen() {
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Alertas ambientais</Text>
           <Text style={screenStyles.subtitle}>
-            Lista de ocorrências da API com severidade, status e ação de resolução.
+            Console de ocorrências com severidade, status e ação de resolução.
           </Text>
         </View>
 
@@ -152,7 +152,7 @@ export default function AlertasScreen() {
           <MetricCard
             label="Total"
             value={summary.total}
-            supportingText="Alertas retornados"
+            supportingText="Ocorrências listadas"
             style={isDesktop && styles.summaryMetric}
           />
           <MetricCard
@@ -198,7 +198,7 @@ export default function AlertasScreen() {
         {!isLoading && !errorMessage && alertas.length === 0 ? (
           <EmptyState
             title="Nenhum alerta encontrado"
-            description="Quando a API retornar alertas ambientais, eles aparecerão aqui."
+            description="Quando houver alertas ambientais, eles aparecerão aqui."
           />
         ) : null}
 

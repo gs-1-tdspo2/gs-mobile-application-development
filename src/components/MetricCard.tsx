@@ -36,17 +36,17 @@ export function MetricCard({
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 120,
+    minHeight: 104,
     overflow: 'hidden',
-    paddingTop: spacing.lg,
+    paddingTop: 18,
   },
   accentLine: {
     borderRadius: 999,
     height: 3,
-    left: spacing.lg,
+    left: 18,
     position: 'absolute',
-    right: spacing.lg,
-    top: spacing.md,
+    right: 18,
+    top: 12,
   },
   header: {
     alignItems: 'center',
@@ -61,14 +61,14 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     textTransform: 'uppercase',
   },
   value: {
     color: colors.neutralText,
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 30,
+    fontWeight: '700',
     marginTop: spacing.sm,
   },
   supportingText: {

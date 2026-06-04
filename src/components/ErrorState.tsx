@@ -33,20 +33,24 @@ export function ErrorState({ title = 'Nao foi possivel carregar', message, onRet
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    backgroundColor: colors.criticalSoftBackground,
-    borderColor: '#F2B8B5',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderLeftColor: colors.criticalRed,
+    borderLeftWidth: 4,
+    borderRadius: 6,
     borderWidth: 1,
+    boxShadow:
+      '0px 2px 1px -1px rgba(0,0,0,.2), 0px 1px 1px 0px rgba(0,0,0,.14), 0px 1px 3px 0px rgba(0,0,0,.12)',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
     padding: spacing.md,
   },
   accent: {
-    backgroundColor: colors.criticalRed,
-    borderRadius: 999,
-    height: 36,
-    width: 4,
+    backgroundColor: colors.criticalSoftBackground,
+    borderRadius: 4,
+    height: 32,
+    width: 32,
   },
   content: {
     flex: 1,
@@ -54,7 +58,7 @@ const styles = StyleSheet.create({
     minWidth: 220,
   },
   title: {
-    color: colors.criticalRed,
+    color: colors.neutralText,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -64,6 +68,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   retryButton: {
-    minHeight: 38,
+    minHeight: 36,
   },
 });

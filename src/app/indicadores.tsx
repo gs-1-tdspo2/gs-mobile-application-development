@@ -12,8 +12,8 @@ import { screenStyles } from '@/styles/global';
 import { useResponsiveLayout } from '@/utils/responsive';
 
 const indicadoresDemo = [
-  { label: 'Cobertura regional', value: '8', supportingText: 'Regiões com dados públicos na API' },
-  { label: 'Risco crítico', value: '4', supportingText: 'Alertas críticos na base de demo' },
+  { label: 'Cobertura regional', value: '8', supportingText: 'Regiões com leitura operacional' },
+  { label: 'Risco crítico', value: '4', supportingText: 'Alertas críticos acompanhados' },
   { label: 'Estações', value: 'IoT', supportingText: 'Sensores simulados por região' },
 ];
 

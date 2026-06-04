@@ -2,7 +2,6 @@ import { Href, Link } from 'expo-router';
 import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 
 import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/spacing';
 
 type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -33,6 +32,7 @@ export function AppButton({
         styles[variant],
         hovered && !disabled && hoverStyles[variant],
         disabled && styles.disabled,
+        pressed && !disabled && pressedStyles[variant],
         pressed && !disabled && styles.pressed,
         style,
       ]}>
@@ -56,40 +56,39 @@ export function AppButton({
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 4,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    shadowColor: colors.navDark,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
+    minHeight: 40,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   primary: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+    boxShadow:
+      '0px 2px 1px -1px rgba(0,0,0,.2), 0px 1px 1px 0px rgba(0,0,0,.14), 0px 1px 3px 0px rgba(0,0,0,.12)',
+    elevation: 1,
   },
   primaryHover: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
+    backgroundColor: colors.primary600,
+    borderColor: colors.primary600,
   },
   secondary: {
     backgroundColor: colors.primaryLight,
-    borderColor: colors.borderStrong,
+    borderColor: colors.primary100,
   },
   secondaryHover: {
-    backgroundColor: '#E0E7FF',
-    borderColor: colors.primaryAccent,
+    backgroundColor: colors.primary100,
+    borderColor: colors.primary200,
   },
   danger: {
     backgroundColor: colors.criticalRed,
     borderColor: colors.criticalRed,
   },
   dangerHover: {
-    backgroundColor: '#B42318',
-    borderColor: '#B42318',
+    backgroundColor: '#B71C1C',
+    borderColor: '#B71C1C',
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -106,12 +105,28 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   pressed: {
-    opacity: 0.9,
+    opacity: 0.92,
     transform: [{ translateY: 1 }],
   },
+  primaryPressed: {
+    backgroundColor: colors.primary700,
+    borderColor: colors.primary700,
+  },
+  secondaryPressed: {
+    backgroundColor: colors.primary100,
+    borderColor: colors.primary300,
+  },
+  ghostPressed: {
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary200,
+  },
+  dangerPressed: {
+    backgroundColor: '#B71C1C',
+    borderColor: '#B71C1C',
+  },
   label: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
   },
   primaryLabel: {
     color: colors.offWhite,
@@ -132,6 +147,13 @@ const hoverStyles = {
   secondary: styles.secondaryHover,
   ghost: styles.ghostHover,
   danger: styles.dangerHover,
+};
+
+const pressedStyles = {
+  primary: styles.primaryPressed,
+  secondary: styles.secondaryPressed,
+  ghost: styles.ghostPressed,
+  danger: styles.dangerPressed,
 };
 
 const labelStyles = {

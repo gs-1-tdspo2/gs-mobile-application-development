@@ -56,15 +56,17 @@ export default function HomeScreen() {
                 <Text style={styles.eyebrow}>Monitoramento climático e ambiental</Text>
                 <Text style={styles.title}>Dashboard Operacional</Text>
                 <Text style={styles.description}>
-                  Visão executiva para acompanhar regiões vulneráveis, risco ambiental e alertas
-                  prioritários em uma operação ambiental integrada.
+                  Monitoramento climático e ambiental das regiões vulneráveis.
                 </Text>
               </View>
               <View style={styles.apiChip}>
                 <View style={styles.apiDot} />
                 <View>
-                  <Text style={styles.apiLabel}>API Render</Text>
-                  <Text style={styles.apiValue}>{errorMessage ? 'Reconectar' : 'Operacional'}</Text>
+                  <Text style={styles.apiLabel}>API: {errorMessage ? 'Reconectar' : 'Online'}</Text>
+                  <Text style={styles.apiValue}>Fonte: Render</Text>
+                  <Text style={styles.apiMeta}>
+                    Última atualização: {summary?.atualizadoEm ?? 'aguardando'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -82,7 +84,7 @@ export default function HomeScreen() {
             <MetricCard
               label="Regiões monitoradas"
               value={formatMetric(summary?.totalRegioes)}
-              supportingText="Total cadastrado na API"
+              supportingText="Regiões ativas"
               accentColor={colors.primary}
               style={isDesktop && styles.metricDesktopItem}
             />
@@ -142,7 +144,7 @@ export default function HomeScreen() {
                   value={formatMetric(summary?.observacoesClimaticas)}
                 />
                 <PanelRow label="Avaliações de risco" value={formatMetric(summary?.avaliacoesRisco)} />
-                <PanelRow label="Atualização" value={summary?.atualizadoEm ?? 'Aguardando API'} />
+                <PanelRow label="Atualização" value={summary?.atualizadoEm ?? 'Aguardando atualização'} />
               </View>
             </AppCard>
 
@@ -161,7 +163,7 @@ export default function HomeScreen() {
 
             <AppCard
               title="Ações rápidas"
-              subtitle="Fluxos principais para a demonstração."
+              subtitle="Fluxos principais da operação."
               variant="elevated"
               style={isDesktop && styles.dashboardPanel}>
               <View style={styles.actionGrid}>
@@ -174,7 +176,7 @@ export default function HomeScreen() {
 
             <AppCard
               title="Atividade recente"
-              subtitle="Notas operacionais para conduzir a leitura do dashboard."
+              subtitle="Sinais de acompanhamento para a operação."
               variant="elevated"
               style={isDesktop && styles.dashboardPanel}>
               <View style={styles.activityList}>
@@ -250,12 +252,15 @@ function ActivityItem({ title, detail }: { title: string; detail: string }) {
 const styles = StyleSheet.create({
   hero: {
     backgroundColor: colors.primary,
-    borderRadius: 16,
+    borderRadius: 6,
+    boxShadow:
+      '0px 2px 4px -1px rgba(0,0,0,.2), 0px 4px 5px 0px rgba(0,0,0,.14), 0px 1px 10px 0px rgba(0,0,0,.12)',
+    elevation: 4,
     gap: spacing.sm,
     padding: spacing.lg,
   },
   heroDesktop: {
-    padding: spacing.xl,
+    padding: 24,
   },
   heroTop: {
     alignItems: 'flex-start',
@@ -276,8 +281,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.offWhite,
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 30,
+    fontWeight: '700',
   },
   description: {
     color: colors.offWhite,
@@ -292,14 +297,14 @@ const styles = StyleSheet.create({
   },
   apiChip: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF1A',
-    borderColor: '#FFFFFF33',
-    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 4,
     borderWidth: 1,
     flexDirection: 'row',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   apiDot: {
     backgroundColor: '#22C55E',
@@ -317,6 +322,11 @@ const styles = StyleSheet.create({
     color: colors.offWhite,
     fontSize: 12,
     fontWeight: '700',
+  },
+  apiMeta: {
+    color: colors.primary100,
+    fontSize: 11,
+    marginTop: 1,
   },
   metricsGrid: {
     gap: spacing.sm,
@@ -374,8 +384,10 @@ const styles = StyleSheet.create({
   actionTile: {
     backgroundColor: colors.surfaceContainer,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
+    boxShadow:
+      '0px 2px 1px -1px rgba(0,0,0,.2), 0px 1px 1px 0px rgba(0,0,0,.14), 0px 1px 3px 0px rgba(0,0,0,.12)',
     flexBasis: '48%',
     flexGrow: 1,
     gap: spacing.sm,
@@ -384,7 +396,9 @@ const styles = StyleSheet.create({
   },
   actionTileHover: {
     backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryAccent,
+    borderColor: colors.primary200,
+    boxShadow:
+      '0px 3px 1px -2px rgba(0,0,0,.2), 0px 2px 2px 0px rgba(0,0,0,.14), 0px 1px 5px 0px rgba(0,0,0,.12)',
   },
   actionTilePressed: {
     opacity: 0.9,

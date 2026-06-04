@@ -175,7 +175,7 @@ export default function GerenciarRegioesScreen() {
   function confirmDelete(regiao: RegiaoReadModel) {
     Alert.alert(
       'Excluir região',
-      `Deseja excluir "${regiao.nome}"? Essa ação será enviada para a API.`,
+      `Deseja excluir "${regiao.nome}"? Essa ação atualizará a base da operação.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -234,7 +234,7 @@ export default function GerenciarRegioesScreen() {
 
           <AppCard
             title="Ações rápidas"
-            subtitle="Crie uma nova região ou atualize a lista da API."
+            subtitle="Crie uma nova região ou atualize a lista operacional."
             variant="compact">
             <View style={styles.actionsRow}>
               {!isDesktop ? (
@@ -352,8 +352,8 @@ export default function GerenciarRegioesScreen() {
 
           {!isLoading && !errorMessage && sortedRegioes.length === 0 ? (
             <EmptyState
-              title="Nenhuma região cadastrada"
-              description="Use a ação Nova Região para cadastrar a primeira área monitorada pela API."
+            title="Nenhuma região cadastrada"
+              description="Use a ação Nova Região para cadastrar a primeira área monitorada."
             />
           ) : null}
 

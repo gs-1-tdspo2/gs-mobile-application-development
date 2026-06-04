@@ -84,7 +84,7 @@ export default function RegioesScreen() {
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Regiões monitoradas</Text>
           <Text style={screenStyles.subtitle}>
-            Lista integrada à API Java com leitura defensiva de campos do domínio Amanajé.
+            Carteira de áreas monitoradas com risco, status e acesso ao detalhe operacional.
           </Text>
         </View>
 
@@ -108,7 +108,7 @@ export default function RegioesScreen() {
         {!isLoading && !errorMessage && regioes.length === 0 ? (
           <EmptyState
             title="Nenhuma região cadastrada"
-            description="Quando a API retornar regiões monitoradas, elas aparecerão nesta lista."
+            description="Quando houver regiões monitoradas, elas aparecerão nesta lista."
           />
         ) : null}
 
@@ -255,12 +255,12 @@ const styles = StyleSheet.create({
   },
   detailAction: {
     backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryAccent,
-    borderRadius: 8,
+    borderColor: colors.primary100,
+    borderRadius: 4,
     borderWidth: 1,
     color: colors.primaryBase,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     overflow: 'hidden',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
