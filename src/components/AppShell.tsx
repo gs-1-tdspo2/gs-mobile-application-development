@@ -12,17 +12,24 @@ type AppShellProps = PropsWithChildren<{
   activeRoute: AppRoute;
 }>;
 
-const navigationItems: { key: AppRoute; label: string; href: Href; description: string }[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '/', description: 'Resumo operacional' },
-  { key: 'regioes', label: 'Regiões', href: '/regioes', description: 'Monitoramento' },
+const navigationItems: {
+  key: AppRoute;
+  label: string;
+  href: Href;
+  description: string;
+  marker: string;
+}[] = [
+  { key: 'dashboard', label: 'Dashboard', href: '/', description: 'Resumo operacional', marker: 'D' },
+  { key: 'regioes', label: 'Regiões', href: '/regioes', description: 'Monitoramento', marker: 'R' },
   {
     key: 'gerenciar',
-    label: 'Gerenciar',
+    label: 'Gerenciar Regiões',
     href: '/gerenciar-regioes',
     description: 'Cadastro e CRUD',
+    marker: 'G',
   },
-  { key: 'alertas', label: 'Alertas', href: '/alertas', description: 'Ocorrências' },
-  { key: 'indicadores', label: 'Indicadores', href: '/indicadores', description: 'Analytics leve' },
+  { key: 'alertas', label: 'Alertas', href: '/alertas', description: 'Ocorrências', marker: 'A' },
+  { key: 'indicadores', label: 'Indicadores', href: '/indicadores', description: 'Analytics leve', marker: 'I' },
 ];
 
 export function AppShell({ activeRoute, children }: AppShellProps) {
@@ -41,8 +48,12 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
           </View>
           <View>
             <Text style={styles.brandName}>Amanajé</Text>
-            <Text style={styles.brandCaption}>Monitoring Dashboard</Text>
+            <Text style={styles.brandCaption}>Monitoramento Ambiental</Text>
           </View>
+        </View>
+
+        <View style={styles.navSection}>
+          <Text style={styles.sectionLabel}>Operação</Text>
         </View>
 
         <View style={styles.nav}>
@@ -53,17 +64,25 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
               <Link key={item.key} href={item.href} asChild>
                 <Pressable
                   accessibilityRole="link"
-                  style={({ pressed }) => [
+                  style={({ hovered, pressed }) => [
                     styles.navItem,
+                    hovered && !isActive && styles.navItemHover,
                     isActive && styles.navItemActive,
                     pressed && styles.navItemPressed,
                   ]}>
-                  <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                    {item.label}
-                  </Text>
-                  <Text style={[styles.navDescription, isActive && styles.navDescriptionActive]}>
-                    {item.description}
-                  </Text>
+                  <View style={[styles.navMarker, isActive && styles.navMarkerActive]}>
+                    <Text style={[styles.navMarkerText, isActive && styles.navMarkerTextActive]}>
+                      {item.marker}
+                    </Text>
+                  </View>
+                  <View style={styles.navText}>
+                    <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                      {item.label}
+                    </Text>
+                    <Text style={[styles.navDescription, isActive && styles.navDescriptionActive]}>
+                      {item.description}
+                    </Text>
+                  </View>
                 </Pressable>
               </Link>
             );
@@ -71,8 +90,11 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
         </View>
 
         <View style={styles.sidebarFooter}>
-          <Text style={styles.footerLabel}>API Demo</Text>
-          <Text style={styles.footerText}>Render conectado via EXPO_PUBLIC_API_BASE_URL.</Text>
+          <View style={styles.footerStatusRow}>
+            <View style={styles.statusDot} />
+            <Text style={styles.footerLabel}>API Render</Text>
+          </View>
+          <Text style={styles.footerText}>Sistema conectado</Text>
         </View>
       </View>
 
@@ -89,11 +111,11 @@ const styles = StyleSheet.create({
   },
   sidebar: {
     backgroundColor: colors.navDark,
-    borderRightColor: colors.navBorder,
+    borderRightColor: '#4258B8',
     borderRightWidth: 1,
-    gap: spacing.xl,
+    gap: spacing.lg,
     padding: spacing.lg,
-    width: 272,
+    width: 292,
   },
   brandBlock: {
     alignItems: 'center',
@@ -102,7 +124,7 @@ const styles = StyleSheet.create({
   },
   brandMark: {
     alignItems: 'center',
-    backgroundColor: colors.navActive,
+    backgroundColor: colors.activeNav,
     borderRadius: 12,
     height: 44,
     justifyContent: 'center',
@@ -124,23 +146,70 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
+  navSection: {
+    marginTop: spacing.sm,
+  },
+  sectionLabel: {
+    color: colors.analyticsMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
   nav: {
     gap: spacing.sm,
   },
   navItem: {
+    alignItems: 'center',
     borderColor: 'transparent',
     borderRadius: 12,
     borderWidth: 1,
-    gap: 2,
-    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingHorizontal: 12,
     paddingVertical: 12,
+  },
+  navItemHover: {
+    backgroundColor: '#3347A8',
+    borderColor: '#4258B8',
   },
   navItemActive: {
     backgroundColor: colors.navActive,
-    borderColor: colors.analyticsBorder,
+    borderColor: '#7B8AE6',
+    shadowColor: colors.activeNav,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   navItemPressed: {
-    opacity: 0.84,
+    opacity: 0.9,
+    transform: [{ translateY: 1 }],
+  },
+  navMarker: {
+    alignItems: 'center',
+    backgroundColor: '#3347A8',
+    borderColor: '#4258B8',
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  navMarkerActive: {
+    backgroundColor: colors.offWhite,
+    borderColor: colors.offWhite,
+  },
+  navMarkerText: {
+    color: colors.analyticsSurface,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  navMarkerTextActive: {
+    color: colors.primaryBase,
+  },
+  navText: {
+    flex: 1,
+    gap: 2,
   },
   navLabel: {
     color: colors.analyticsSurface,
@@ -159,13 +228,24 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
   },
   sidebarFooter: {
-    backgroundColor: colors.navPanel,
-    borderColor: colors.analyticsBorder,
+    backgroundColor: '#3347A8',
+    borderColor: '#6577D6',
     borderRadius: 12,
     borderWidth: 1,
     gap: spacing.xs,
     marginTop: 'auto',
     padding: spacing.md,
+  },
+  footerStatusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statusDot: {
+    backgroundColor: '#22C55E',
+    borderRadius: 999,
+    height: 8,
+    width: 8,
   },
   footerLabel: {
     color: colors.offWhite,
@@ -183,4 +263,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
