@@ -14,11 +14,11 @@ type AppShellProps = PropsWithChildren<{
 type NavItem = { key: AppRoute; label: string; href: Href; symbol: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard',   label: 'Dashboard',          href: '/',                  symbol: '⊞' },
-  { key: 'regioes',     label: 'Regiões',             href: '/regioes',           symbol: '◎' },
-  { key: 'gerenciar',   label: 'Gerenciar Regiões',   href: '/gerenciar-regioes', symbol: '⊕' },
-  { key: 'alertas',     label: 'Alertas',             href: '/alertas',           symbol: '△' },
-  { key: 'indicadores', label: 'Indicadores',         href: '/indicadores',       symbol: '≡' },
+  { key: 'dashboard',   label: 'Dashboard',         href: '/',                  symbol: '⊞' },
+  { key: 'regioes',     label: 'Regiões',            href: '/regioes',           symbol: '◎' },
+  { key: 'gerenciar',   label: 'Gerenciar Regiões',  href: '/gerenciar-regioes', symbol: '⊕' },
+  { key: 'alertas',     label: 'Alertas',            href: '/alertas',           symbol: '△' },
+  { key: 'indicadores', label: 'Indicadores',        href: '/indicadores',       symbol: '≡' },
 ];
 
 const PAGE_TITLE: Record<AppRoute, string> = {
@@ -42,16 +42,15 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
       {/* ── Sidebar ─────────────────────────────────── */}
       <View style={styles.sidebar}>
 
-        {/* Brand */}
+        {/* Brand — Amanajé only, no subtitle */}
         <View style={styles.brand}>
           <View style={styles.brandIcon}>
             <Text style={styles.brandIconText}>A</Text>
           </View>
-          <View style={styles.brandText}>
-            <Text style={styles.brandName}>Amanajé</Text>
-            <Text style={styles.brandSub}>Environmental Intelligence</Text>
-          </View>
+          <Text style={styles.brandName}>Amanajé</Text>
         </View>
+
+        <View style={styles.divider} />
 
         {/* Nav */}
         <ScrollView
@@ -70,13 +69,20 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
                     hovered && !active && styles.navItemHover,
                     pressed  && styles.navItemPressed,
                   ]}>
+                  {/* Left accent strip for active item */}
                   {active && <View style={styles.activeBar} />}
+
+                  {/* Icon box — flexShrink: 0 prevents it from collapsing */}
                   <View style={[styles.navIcon, active && styles.navIconActive]}>
                     <Text style={[styles.navIconText, active && styles.navIconTextActive]}>
                       {item.symbol}
                     </Text>
                   </View>
-                  <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+
+                  {/* Label — numberOfLines prevents wrap-under-icon */}
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.navLabel, active && styles.navLabelActive]}>
                     {item.label}
                   </Text>
                 </Pressable>
@@ -85,17 +91,17 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
           })}
         </ScrollView>
 
-        {/* Footer status */}
+        {/* Footer */}
         <View style={styles.sidebarFooter}>
           <View style={styles.statusRow}>
             <View style={styles.statusDot} />
-            <Text style={styles.statusText}>API Online · Render</Text>
+            <Text style={styles.statusText}>API Online</Text>
           </View>
         </View>
 
       </View>
 
-      {/* ── Right: top bar + content ─────────────────── */}
+      {/* ── Right: top bar + page content ───────────── */}
       <View style={styles.rightArea}>
 
         {/* Top bar */}
@@ -104,7 +110,7 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
           <View style={styles.topBarRight}>
             <View style={styles.statusChip}>
               <View style={styles.statusChipDot} />
-              <Text style={styles.statusChipText}>API Conectada</Text>
+              <Text style={styles.statusChipText}>Render conectado</Text>
             </View>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>AE</Text>
@@ -122,8 +128,7 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
   );
 }
 
-const SIDEBAR_BG  = '#283A9B';
-const TOP_BAR_BG  = '#FFFFFF';
+const SIDEBAR_BG = '#283A9B';
 
 const styles = StyleSheet.create({
   shell: {
@@ -135,124 +140,135 @@ const styles = StyleSheet.create({
   /* ── Sidebar ──────────────────────────────── */
   sidebar: {
     backgroundColor: SIDEBAR_BG,
-    boxShadow: '2px 0 6px rgba(0,0,0,0.22)',
+    boxShadow: '2px 0 8px rgba(0,0,0,0.28)',
     elevation: 4,
     flexDirection: 'column',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
     width: 220,
   },
 
+  /* Brand: icon + name only, no subtitle */
   brand: {
     alignItems: 'center',
-    borderBottomColor: 'rgba(255,255,255,0.10)',
-    borderBottomWidth: 1,
     flexDirection: 'row',
     gap: 10,
+    height: 60,
     paddingHorizontal: 16,
-    paddingVertical: 16,
   },
   brandIcon: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 8,
-    height: 36,
+    flexShrink: 0,
+    height: 34,
     justifyContent: 'center',
-    width: 36,
+    width: 34,
   },
   brandIconText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-  },
-  brandText: {
-    flex: 1,
   },
   brandName: {
     color: '#ffffff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
-  brandSub: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 10,
-    marginTop: 1,
+
+  divider: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    height: 1,
+    marginHorizontal: 12,
+    marginBottom: 8,
   },
 
+  /* Nav scroll area */
   navScroll: {
     flex: 1,
   },
   navContent: {
     gap: 2,
+    paddingBottom: 8,
     paddingHorizontal: 8,
-    paddingTop: 10,
   },
+
+  /* Nav row: strictly horizontal, icon left, label right */
   navItem: {
     alignItems: 'center',
     borderRadius: 6,
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     gap: 10,
-    minHeight: 44,
+    height: 44,
     overflow: 'hidden',
-    paddingHorizontal: 8,
+    paddingLeft: 8,
+    paddingRight: 12,
     position: 'relative',
+    width: '100%',
   },
   navItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.20)',
   },
   navItemHover: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   navItemPressed: {
-    backgroundColor: 'rgba(255,255,255,0.20)',
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
 
   activeBar: {
     backgroundColor: '#ffffff',
-    bottom: 0,
-    borderBottomRightRadius: 2,
-    borderTopRightRadius: 2,
+    bottom: 6,
+    borderRadius: 2,
     left: 0,
     position: 'absolute',
-    top: 0,
+    top: 6,
     width: 3,
   },
 
   navIcon: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: 5,
+    flexShrink: 0,
     height: 28,
     justifyContent: 'center',
     width: 28,
   },
   navIconActive: {
-    backgroundColor: 'rgba(255,255,255,0.20)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   navIconText: {
-    color: 'rgba(255,255,255,0.60)',
+    color: 'rgba(255,255,255,0.65)',
     fontSize: 13,
+    lineHeight: 14,
   },
   navIconTextActive: {
     color: '#ffffff',
   },
+
+  /* Label: flex 1 so it fills row, numberOfLines=1 prevents wrap */
   navLabel: {
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.78)',
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   navLabelActive: {
     color: '#ffffff',
     fontWeight: '700',
   },
 
+  /* Footer */
   sidebarFooter: {
     borderTopColor: 'rgba(255,255,255,0.10)',
     borderTopWidth: 1,
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   statusRow: {
     alignItems: 'center',
@@ -266,7 +282,7 @@ const styles = StyleSheet.create({
     width: 6,
   },
   statusText: {
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 11,
   },
 
@@ -279,10 +295,10 @@ const styles = StyleSheet.create({
 
   topBar: {
     alignItems: 'center',
-    backgroundColor: TOP_BAR_BG,
+    backgroundColor: '#ffffff',
     borderBottomColor: '#E5E7EB',
     borderBottomWidth: 1,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
     elevation: 2,
     flexDirection: 'row',
     height: 52,
@@ -290,18 +306,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
   },
   topBarTitle: {
     color: colors.neutralText,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   topBarRight: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   statusChip: {
     alignItems: 'center',
@@ -329,13 +345,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: SIDEBAR_BG,
     borderRadius: 99,
-    height: 32,
+    height: 30,
     justifyContent: 'center',
-    width: 32,
+    width: 30,
   },
   avatarText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
 
