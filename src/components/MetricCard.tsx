@@ -21,60 +21,63 @@ export function MetricCard({
   variant = 'elevated',
   style,
 }: MetricCardProps) {
+  const accent = accentColor ?? colors.primary;
+
   return (
-    <AppCard variant={variant === 'compact' ? 'compact' : variant} style={[styles.card, style]}>
-      <View style={[styles.accentLine, { backgroundColor: accentColor ?? colors.primary }]} />
-      <View style={styles.header}>
-        {accentColor ? <View style={[styles.indicator, { backgroundColor: accentColor }]} /> : null}
+    <AppCard
+      variant={variant === 'compact' ? 'compact' : variant}
+      style={[styles.card, style]}>
+      <View style={[styles.leftBorder, { backgroundColor: accent }]} />
+      <View style={styles.body}>
         <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.value, { color: accent === colors.primary ? colors.neutralText : accent }]}>
+          {value}
+        </Text>
+        {supportingText ? (
+          <Text style={styles.supportingText}>{supportingText}</Text>
+        ) : null}
       </View>
-      <Text style={styles.value}>{value}</Text>
-      {supportingText ? <Text style={styles.supportingText}>{supportingText}</Text> : null}
     </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 104,
+    minHeight: 96,
     overflow: 'hidden',
-    paddingTop: 18,
+    padding: 0,
   },
-  accentLine: {
-    borderRadius: 999,
-    height: 3,
-    left: 18,
+  leftBorder: {
+    bottom: 0,
+    borderBottomLeftRadius: 6,
+    borderTopLeftRadius: 6,
+    left: 0,
     position: 'absolute',
-    right: 18,
-    top: 12,
+    top: 0,
+    width: 4,
   },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  indicator: {
-    borderRadius: 999,
-    height: 8,
-    width: 8,
+  body: {
+    gap: spacing.xs,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 14,
   },
   label: {
     color: colors.textMuted,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   value: {
-    color: colors.neutralText,
-    fontSize: 30,
+    fontSize: 38,
     fontWeight: '700',
-    marginTop: spacing.sm,
+    lineHeight: 44,
   },
   supportingText: {
     color: colors.mutedText,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: spacing.xs,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
   },
 });
