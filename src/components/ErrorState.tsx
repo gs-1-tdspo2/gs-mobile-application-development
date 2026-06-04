@@ -13,30 +13,57 @@ type ErrorStateProps = {
 export function ErrorState({ title = 'Nao foi possivel carregar', message, onRetry }: ErrorStateProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
-      {onRetry ? <AppButton label="Tentar novamente" onPress={onRetry} variant="ghost" /> : null}
+      <View style={styles.accent} />
+      <View style={styles.content}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.message}>{message}</Text>
+      </View>
+      {onRetry ? (
+        <AppButton
+          label="Tentar novamente"
+          onPress={onRetry}
+          variant="secondary"
+          style={styles.retryButton}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
-    borderColor: colors.criticalRed,
-    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: colors.criticalSoftBackground,
+    borderColor: '#F2B8B5',
+    borderRadius: 12,
     borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.lg,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  accent: {
+    backgroundColor: colors.criticalRed,
+    borderRadius: 999,
+    height: 36,
+    width: 4,
+  },
+  content: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 220,
   },
   title: {
     color: colors.criticalRed,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
   },
   message: {
     color: colors.mutedText,
     fontSize: 14,
     lineHeight: 20,
+  },
+  retryButton: {
+    minHeight: 38,
   },
 });

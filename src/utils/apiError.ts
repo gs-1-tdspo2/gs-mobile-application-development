@@ -3,11 +3,11 @@ import { AxiosError } from 'axios';
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     if (error.code === 'ECONNABORTED') {
-      return 'A API demorou para responder. Tente novamente.';
+      return 'Não foi possível carregar os dados agora. A API pode estar iniciando; tente novamente em alguns segundos.';
     }
 
     if (!error.response) {
-      return 'Não foi possível conectar à API. Aguarde alguns segundos e tente novamente.';
+      return 'Não foi possível carregar os dados agora. A API pode estar iniciando; tente novamente em alguns segundos.';
     }
 
     if (error.response.status === 404) {

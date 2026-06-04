@@ -28,14 +28,17 @@ export function AppButton({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ hovered, pressed }) => [
         styles.base,
         styles[variant],
+        hovered && !disabled && hoverStyles[variant],
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
         style,
       ]}>
-      <Text style={[styles.label, styles[`${variant}Label`]]}>{label}</Text>
+      <Text style={[styles.label, labelStyles[variant], disabled && styles.disabledLabel]}>
+        {label}
+      </Text>
     </Pressable>
   );
 
@@ -59,28 +62,52 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    shadowColor: colors.navDark,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
   },
   primary: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  primaryHover: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
+  },
   secondary: {
     backgroundColor: colors.primaryLight,
     borderColor: colors.borderStrong,
+  },
+  secondaryHover: {
+    backgroundColor: '#E0E7FF',
+    borderColor: colors.primaryAccent,
   },
   danger: {
     backgroundColor: colors.criticalRed,
     borderColor: colors.criticalRed,
   },
+  dangerHover: {
+    backgroundColor: '#B42318',
+    borderColor: '#B42318',
+  },
   ghost: {
     backgroundColor: 'transparent',
     borderColor: colors.border,
   },
+  ghostHover: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryAccent,
+  },
   disabled: {
     opacity: 0.5,
   },
+  disabledLabel: {
+    color: colors.textMuted,
+  },
   pressed: {
-    opacity: 0.82,
+    opacity: 0.9,
+    transform: [{ translateY: 1 }],
   },
   label: {
     fontSize: 15,
@@ -99,3 +126,17 @@ const styles = StyleSheet.create({
     color: colors.offWhite,
   },
 });
+
+const hoverStyles = {
+  primary: styles.primaryHover,
+  secondary: styles.secondaryHover,
+  ghost: styles.ghostHover,
+  danger: styles.dangerHover,
+};
+
+const labelStyles = {
+  primary: styles.primaryLabel,
+  secondary: styles.secondaryLabel,
+  ghost: styles.ghostLabel,
+  danger: styles.dangerLabel,
+};

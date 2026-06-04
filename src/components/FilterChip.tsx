@@ -15,7 +15,12 @@ export function FilterChip({ label, selected = false, onPress }: FilterChipProps
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, selected && styles.selected, pressed && styles.pressed]}>
+      style={({ hovered, pressed }) => [
+        styles.chip,
+        hovered && !selected && styles.hovered,
+        selected && styles.selected,
+        pressed && styles.pressed,
+      ]}>
       <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
     </Pressable>
   );
@@ -30,12 +35,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  selected: {
+  hovered: {
     backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryAccent,
+  },
+  selected: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   pressed: {
-    opacity: 0.82,
+    opacity: 0.9,
+    transform: [{ translateY: 1 }],
   },
   label: {
     color: colors.mutedText,
@@ -43,6 +53,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   selectedLabel: {
-    color: colors.primaryBase,
+    color: colors.offWhite,
   },
 });

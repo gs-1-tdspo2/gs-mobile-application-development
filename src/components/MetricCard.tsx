@@ -9,12 +9,21 @@ type MetricCardProps = {
   value: string | number;
   supportingText?: string;
   accentColor?: string;
+  variant?: 'default' | 'elevated' | 'compact';
   style?: StyleProp<ViewStyle>;
 };
 
-export function MetricCard({ label, value, supportingText, accentColor, style }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  supportingText,
+  accentColor,
+  variant = 'elevated',
+  style,
+}: MetricCardProps) {
   return (
-    <AppCard style={[styles.card, style]}>
+    <AppCard variant={variant === 'compact' ? 'compact' : variant} style={[styles.card, style]}>
+      <View style={[styles.accentLine, { backgroundColor: accentColor ?? colors.primary }]} />
       <View style={styles.header}>
         {accentColor ? <View style={[styles.indicator, { backgroundColor: accentColor }]} /> : null}
         <Text style={styles.label}>{label}</Text>
@@ -28,6 +37,16 @@ export function MetricCard({ label, value, supportingText, accentColor, style }:
 const styles = StyleSheet.create({
   card: {
     minHeight: 120,
+    overflow: 'hidden',
+    paddingTop: spacing.lg,
+  },
+  accentLine: {
+    borderRadius: 999,
+    height: 3,
+    left: spacing.lg,
+    position: 'absolute',
+    right: spacing.lg,
+    top: spacing.md,
   },
   header: {
     alignItems: 'center',
@@ -41,13 +60,14 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0,
     textTransform: 'uppercase',
   },
   value: {
     color: colors.neutralText,
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
     marginTop: spacing.sm,
   },
