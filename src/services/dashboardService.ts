@@ -3,8 +3,24 @@ import { DashboardSummary, DashboardSummaryRaw } from '@/types/dashboard';
 import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await api.get<DashboardSummaryRaw>('/api/dashboard/summary');
-  return normalizeDashboardSummary(response.data);
+  try {
+    const response = await api.get<DashboardSummaryRaw | unknown>('/api/dashboard/summary');
+    const raw = normalizeRawDashboardResponse(response.data);
+    const normalized = normalizeDashboardSummary(raw);
+
+    if (__DEV__) {
+      console.log('[DashboardService] raw response.data', response.data);
+      console.log('[DashboardService] normalized summary', normalized);
+    }
+
+    return normalized;
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[DashboardService] getDashboardSummary error', error);
+    }
+
+    throw error;
+  }
 }
 
 export async function buscarResumoDashboard(): Promise<DashboardSummary> {
@@ -57,6 +73,21 @@ function normalizeDashboardSummary(raw: DashboardSummaryRaw): DashboardSummary {
   };
 }
 
+function normalizeRawDashboardResponse(value: unknown): DashboardSummaryRaw {
+  const parsed = parseJsonIfNeeded(value);
+
+  if (isRecord(parsed)) {
+    const wrapped = parsed.data ?? parsed.content ?? parsed.item;
+    if (isRecord(wrapped)) {
+      return wrapped as DashboardSummaryRaw;
+    }
+
+    return parsed as DashboardSummaryRaw;
+  }
+
+  return {};
+}
+
 function pickNumber(source: Record<string, unknown>, keys: string[]): number | undefined {
   for (const key of keys) {
     const value = source[key];
@@ -74,6 +105,22 @@ function pickNumber(source: Record<string, unknown>, keys: string[]): number | u
   }
 
   return undefined;
+}
+
+function parseJsonIfNeeded(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function pickString(source: Record<string, unknown>, keys: string[]): string | undefined {
