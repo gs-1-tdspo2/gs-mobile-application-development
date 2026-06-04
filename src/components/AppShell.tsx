@@ -3,7 +3,6 @@ import { PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/spacing';
 import { useResponsiveLayout } from '@/utils/responsive';
 
 type AppRoute = 'dashboard' | 'regioes' | 'gerenciar' | 'alertas' | 'indicadores';
@@ -12,24 +11,20 @@ type AppShellProps = PropsWithChildren<{
   activeRoute: AppRoute;
 }>;
 
-const navigationItems: {
+type NavItem = {
   key: AppRoute;
   label: string;
   href: Href;
-  description: string;
-  marker: string;
-}[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '/', description: 'Resumo operacional', marker: 'D' },
-  { key: 'regioes', label: 'Regiões', href: '/regioes', description: 'Monitoramento', marker: 'R' },
-  {
-    key: 'gerenciar',
-    label: 'Gerenciar',
-    href: '/gerenciar-regioes',
-    description: 'Cadastro e CRUD',
-    marker: 'G',
-  },
-  { key: 'alertas', label: 'Alertas', href: '/alertas', description: 'Ocorrências', marker: 'A' },
-  { key: 'indicadores', label: 'Indicadores', href: '/indicadores', description: 'Analytics', marker: 'I' },
+  sub: string;
+  symbol: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { key: 'dashboard',   label: 'Dashboard',   href: '/',                  sub: 'Resumo operacional',  symbol: '⊞' },
+  { key: 'regioes',     label: 'Regiões',      href: '/regioes',           sub: 'Monitoramento',        symbol: '◎' },
+  { key: 'gerenciar',   label: 'Gerenciar',    href: '/gerenciar-regioes', sub: 'Cadastro e CRUD',      symbol: '⊕' },
+  { key: 'alertas',     label: 'Alertas',      href: '/alertas',           sub: 'Ocorrências',          symbol: '△' },
+  { key: 'indicadores', label: 'Indicadores',  href: '/indicadores',       sub: 'Analytics',            symbol: '≡' },
 ];
 
 export function AppShell({ activeRoute, children }: AppShellProps) {
@@ -42,45 +37,49 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
   return (
     <View style={styles.shell}>
       <View style={styles.sidebar}>
-        <View style={styles.brandBlock}>
-          <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>A</Text>
+
+        {/* Brand */}
+        <View style={styles.brand}>
+          <View style={styles.brandLogo}>
+            <Text style={styles.brandLogoText}>A</Text>
           </View>
           <View>
             <Text style={styles.brandName}>Amanajé</Text>
-            <Text style={styles.brandCaption}>Monitoramento Ambiental</Text>
+            <Text style={styles.brandSub}>Monitoramento Ambiental</Text>
           </View>
         </View>
 
-        <View style={styles.navSection}>
-          <Text style={styles.sectionLabel}>Operação</Text>
-        </View>
+        <View style={styles.divider} />
 
+        {/* Section label */}
+        <Text style={styles.sectionLabel}>OPERAÇÃO</Text>
+
+        {/* Nav */}
         <View style={styles.nav}>
-          {navigationItems.map((item) => {
-            const isActive = item.key === activeRoute;
-
+          {NAV_ITEMS.map((item) => {
+            const active = item.key === activeRoute;
             return (
               <Link key={item.key} href={item.href} asChild>
                 <Pressable
                   accessibilityRole="link"
                   style={({ hovered, pressed }) => [
                     styles.navItem,
-                    hovered && !isActive && styles.navItemHover,
-                    isActive && styles.navItemActive,
-                    pressed && styles.navItemPressed,
+                    active    && styles.navActive,
+                    hovered && !active && styles.navHover,
+                    pressed   && styles.navPressed,
                   ]}>
-                  <View style={[styles.navMarker, isActive && styles.navMarkerActive]}>
-                    <Text style={[styles.navMarkerText, isActive && styles.navMarkerTextActive]}>
-                      {item.marker}
+                  {active && <View style={styles.activeStrip} />}
+                  <View style={[styles.symbol, active && styles.symbolActive]}>
+                    <Text style={[styles.symbolText, active && styles.symbolTextActive]}>
+                      {item.symbol}
                     </Text>
                   </View>
-                  <View style={styles.navText}>
-                    <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                  <View style={styles.navTextBlock}>
+                    <Text style={[styles.navLabel, active && styles.navLabelActive]}>
                       {item.label}
                     </Text>
-                    <Text style={[styles.navDescription, isActive && styles.navDescriptionActive]}>
-                      {item.description}
+                    <Text style={[styles.navSub, active && styles.navSubActive]}>
+                      {item.sub}
                     </Text>
                   </View>
                 </Pressable>
@@ -89,13 +88,15 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
           })}
         </View>
 
-        <View style={styles.sidebarFooter}>
-          <View style={styles.footerStatusRow}>
+        {/* Footer status */}
+        <View style={styles.statusBlock}>
+          <View style={styles.statusRow}>
             <View style={styles.statusDot} />
-            <Text style={styles.footerLabel}>API Render</Text>
+            <Text style={styles.statusLabel}>API Online</Text>
           </View>
-          <Text style={styles.footerText}>Sistema conectado</Text>
+          <Text style={styles.statusSub}>Render · gs-java-advanced</Text>
         </View>
+
       </View>
 
       <View style={styles.main}>{children}</View>
@@ -109,156 +110,183 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
+
+  /* ── Sidebar ─────────────────────────────────── */
   sidebar: {
-    backgroundColor: colors.navDark,
-    gap: spacing.md,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    shadowColor: '#000000',
+    backgroundColor: colors.primary700,
+    boxShadow: '2px 0 8px rgba(0,0,0,0.28)',
+    elevation: 4,
+    paddingBottom: 20,
+    paddingTop: 0,
+    shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     width: 260,
   },
-  brandBlock: {
+
+  /* Brand */
+  brand: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.md,
-    minHeight: 56,
-    paddingHorizontal: 8,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
-  brandMark: {
+  brandLogo: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 8,
     height: 40,
     justifyContent: 'center',
     width: 40,
   },
-  brandMarkText: {
-    color: colors.offWhite,
+  brandLogoText: {
+    color: '#ffffff',
     fontSize: 22,
     fontWeight: '800',
   },
   brandName: {
-    color: colors.offWhite,
-    fontSize: 19,
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: '700',
   },
-  brandCaption: {
-    color: colors.analyticsSurface,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  navSection: {
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-  },
-  sectionLabel: {
-    color: colors.analyticsMuted,
+  brandSub: {
+    color: colors.primary200,
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
+    marginTop: 1,
   },
+
+  divider: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    height: 1,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+
+  sectionLabel: {
+    color: colors.primary300,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 4,
+    paddingHorizontal: 20,
+  },
+
+  /* Nav items */
   nav: {
     gap: 2,
+    paddingHorizontal: 8,
   },
   navItem: {
     alignItems: 'center',
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 3,
-    borderRadius: 4,
+    borderRadius: 6,
     flexDirection: 'row',
     gap: 12,
-    minHeight: 42,
-    paddingHorizontal: 13,
+    minHeight: 44,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
     paddingVertical: 6,
+    position: 'relative',
   },
-  navItemHover: {
+  navActive: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  navHover: {
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  navItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderLeftColor: colors.accent300,
+  navPressed: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  navItemPressed: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    opacity: 0.92,
+
+  activeStrip: {
+    backgroundColor: colors.accent300,
+    bottom: 0,
+    borderBottomRightRadius: 3,
+    borderTopRightRadius: 3,
+    left: 0,
+    position: 'absolute',
+    top: 0,
+    width: 3,
   },
-  navMarker: {
+
+  symbol: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.10)',
-    borderRadius: 4,
-    height: 28,
+    borderRadius: 6,
+    height: 30,
     justifyContent: 'center',
-    width: 28,
+    width: 30,
   },
-  navMarkerActive: {
-    backgroundColor: colors.offWhite,
+  symbolActive: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  navMarkerText: {
-    color: colors.analyticsSurface,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  navMarkerTextActive: {
-    color: colors.primaryBase,
-  },
-  navText: {
-    flex: 1,
-    gap: 0,
-  },
-  navLabel: {
-    color: colors.analyticsSurface,
+  symbolText: {
+    color: colors.primary200,
     fontSize: 14,
     fontWeight: '700',
   },
+  symbolTextActive: {
+    color: '#ffffff',
+  },
+
+  navTextBlock: {
+    flex: 1,
+    gap: 1,
+  },
+  navLabel: {
+    color: colors.primary100,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   navLabelActive: {
-    color: colors.offWhite,
+    color: '#ffffff',
+    fontWeight: '700',
   },
-  navDescription: {
-    color: colors.analyticsMuted,
+  navSub: {
+    color: colors.primary300,
     fontSize: 11,
-    fontWeight: '500',
   },
-  navDescriptionActive: {
-    color: colors.primaryLight,
+  navSubActive: {
+    color: colors.primary200,
   },
-  sidebarFooter: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderColor: 'rgba(255,255,255,0.18)',
+
+  /* Footer status */
+  statusBlock: {
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: 6,
     borderWidth: 1,
-    gap: spacing.xs,
+    gap: 3,
+    marginHorizontal: 12,
     marginTop: 'auto',
     padding: 12,
   },
-  footerStatusRow: {
+  statusRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: 6,
   },
   statusDot: {
-    backgroundColor: '#22C55E',
-    borderRadius: 999,
-    height: 8,
-    width: 8,
+    backgroundColor: '#22c55e',
+    borderRadius: 99,
+    height: 7,
+    width: 7,
   },
-  footerLabel: {
-    color: colors.offWhite,
+  statusLabel: {
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    fontWeight: '700',
   },
-  footerText: {
-    color: colors.analyticsSurface,
-    fontSize: 12,
-    lineHeight: 18,
+  statusSub: {
+    color: colors.primary300,
+    fontSize: 11,
   },
+
+  /* Main content area */
   main: {
     backgroundColor: colors.background,
     flex: 1,
+    overflow: 'hidden',
   },
 });
