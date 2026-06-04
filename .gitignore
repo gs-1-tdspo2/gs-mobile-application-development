@@ -37,6 +37,19 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# local agent/tooling files
+.claude/
+.codex/
+.cursor/
+.windsurf/
+.mcp/
+.mcp.json
+.claude.json
+AGENTS.md
+agents.md
+CLAUDE.md
+claude.md
+
 example
 
 # generated native folders
