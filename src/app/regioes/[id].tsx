@@ -30,17 +30,12 @@ import { getApiErrorMessage } from '@/utils/apiError';
 import { formatDate } from '@/utils/formatDate';
 import { useResponsiveLayout } from '@/utils/responsive';
 
-type SectionErrors = {
-  regiao?: string;
-  risco?: string;
-  estacoes?: string;
-  leituras?: string;
-};
+type SectionErrors = { regiao?: string; risco?: string; estacoes?: string; leituras?: string };
 
 export default function RegiaoDetalheScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [regiao, setRegiao] = useState<RegiaoReadModel | null>(null);
-  const [risco, setRisco] = useState<RiscoAtualReadModel | null>(null);
+  const [regiao, setRegiao]   = useState<RegiaoReadModel | null>(null);
+  const [risco, setRisco]     = useState<RiscoAtualReadModel | null>(null);
   const [estacoes, setEstacoes] = useState<EstacaoReadModel[]>([]);
   const [leituras, setLeituras] = useState<LeituraReadModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,26 +43,18 @@ export default function RegiaoDetalheScreen() {
   const [sectionErrors, setSectionErrors] = useState<SectionErrors>({});
   const { isDesktop } = useResponsiveLayout();
 
-  const latestReading = leituras[0];
+  const latest = leituras[0];
   const effectiveRisk = risco?.nivel ?? regiao?.riscoNivel;
 
-  const readingMetrics = useMemo(
-    () => [
-      { label: 'Temperatura', value: formatMetric(latestReading?.temperatura, '°C') },
-      { label: 'Umidade', value: formatMetric(latestReading?.umidade, '%') },
-      { label: 'Índice UV', value: formatMetric(latestReading?.indiceUv) },
-      { label: 'Chuva', value: formatMetric(latestReading?.chuva, 'mm') },
-      { label: 'Gás/Fumaça', value: formatMetric(latestReading?.gasFumaca) },
-    ],
-    [latestReading],
-  );
+  const readingMetrics = useMemo(() => [
+    { label: 'Temperatura', value: fmtNum(latest?.temperatura, '°C'), icon: '☀' },
+    { label: 'Umidade',     value: fmtNum(latest?.umidade, '%'),       icon: '💧' },
+    { label: 'Índice UV',   value: fmtNum(latest?.indiceUv),           icon: '⚡' },
+    { label: 'Chuva',       value: fmtNum(latest?.chuva, 'mm'),        icon: '🌧' },
+  ], [latest]);
 
   const loadDetails = useCallback(async () => {
-    if (!id) {
-      setIsLoading(false);
-      setErrorMessage('Identificador da região não foi informado.');
-      return;
-    }
+    if (!id) { setIsLoading(false); setErrorMessage('ID da região não informado.'); return; }
 
     setIsLoading(true);
     setErrorMessage(null);
@@ -78,52 +65,35 @@ export default function RegiaoDetalheScreen() {
 
     try {
       regiaoData = await getRegiaoById(id);
-    } catch (error) {
-      nextErrors.regiao = getApiErrorMessage(error);
-
+    } catch (e) {
+      nextErrors.regiao = getApiErrorMessage(e);
       try {
-        const regioes = await getRegioes();
-        regiaoData = regioes.find((item) => String(item.id) === String(id)) ?? null;
-      } catch {
-        regiaoData = null;
-      }
+        const all = await getRegioes();
+        regiaoData = all.find((r) => String(r.id) === String(id)) ?? null;
+      } catch { regiaoData = null; }
     }
 
-    const [riscoResult, estacoesResult, leiturasResult] = await Promise.allSettled([
+    const [riscoR, estacoesR, leiturasR] = await Promise.allSettled([
       getRiscoAtualByRegiao(id),
       getEstacoesByRegiao(id),
       getLeiturasByRegiao(id),
     ]);
 
-    if (riscoResult.status === 'fulfilled') {
-      setRisco(riscoResult.value);
-    } else {
-      setRisco(null);
-      nextErrors.risco = getApiErrorMessage(riscoResult.reason);
-    }
+    if (riscoR.status === 'fulfilled')   { setRisco(riscoR.value); }
+    else { setRisco(null); nextErrors.risco = getApiErrorMessage(riscoR.reason); }
 
-    if (estacoesResult.status === 'fulfilled') {
-      setEstacoes(estacoesResult.value);
-    } else {
-      setEstacoes([]);
-      nextErrors.estacoes = getApiErrorMessage(estacoesResult.reason);
-    }
+    if (estacoesR.status === 'fulfilled') { setEstacoes(estacoesR.value); }
+    else { setEstacoes([]); nextErrors.estacoes = getApiErrorMessage(estacoesR.reason); }
 
-    if (leiturasResult.status === 'fulfilled') {
-      setLeituras(leiturasResult.value);
-    } else {
-      setLeituras([]);
-      nextErrors.leituras = getApiErrorMessage(leiturasResult.reason);
-    }
+    if (leiturasR.status === 'fulfilled') { setLeituras(leiturasR.value); }
+    else { setLeituras([]); nextErrors.leituras = getApiErrorMessage(leiturasR.reason); }
 
     setRegiao(regiaoData);
     setSectionErrors(nextErrors);
     setIsLoading(false);
   }, [id]);
 
-  useEffect(() => {
-    void Promise.resolve().then(loadDetails);
-  }, [loadDetails]);
+  useEffect(() => { void Promise.resolve().then(loadDetails); }, [loadDetails]);
 
   return (
     <AppShell activeRoute="regioes">
@@ -133,267 +103,259 @@ export default function RegiaoDetalheScreen() {
             screenStyles.scrollContent,
             isDesktop && screenStyles.desktopScrollContent,
           ]}>
-        <View style={screenStyles.header}>
-          <Text style={screenStyles.title}>{regiao?.nome ?? `Região ${id ?? ''}`}</Text>
-          <Text style={screenStyles.subtitle}>
-            Monitoramento regional com risco atual, estações IoT e últimas leituras ambientais.
-          </Text>
-        </View>
 
-        {isLoading ? <LoadingState message="Carregando detalhe da região..." /> : null}
+          {isLoading ? <LoadingState message="Carregando dados da região..." /> : null}
+          {errorMessage ? <ErrorState message={errorMessage} onRetry={loadDetails} /> : null}
 
-        {errorMessage ? <ErrorState message={errorMessage} onRetry={loadDetails} /> : null}
-
-        {!isLoading && !errorMessage ? (
-          <>
-            <AppCard title={regiao?.nome ?? 'Identidade da região'} variant="elevated">
-              <View style={styles.identity}>
-                {sectionErrors.regiao ? (
-                  <Text style={styles.warningText}>
-                    Não foi possível carregar todos os dados de identidade. Exibindo dados parciais
-                    disponíveis.
+          {!isLoading && !errorMessage ? (
+            <>
+              {/* ── Region header ─────────────────────────── */}
+              <View style={[styles.regionHead, isDesktop && styles.regionHeadDesktop]}>
+                <View style={styles.regionHeadLeft}>
+                  <Text style={styles.eyebrow}>DETALHE DA REGIÃO</Text>
+                  <Text style={styles.regionName}>{regiao?.nome ?? `Região ${id ?? ''}`}</Text>
+                  <Text style={styles.regionMeta}>
+                    {[regiao?.cidade, regiao?.estado].filter(Boolean).join(' / ') || 'Localização não informada'}
+                    {regiao?.tipoCliente ? ` · ${regiao.tipoCliente}` : ''}
                   </Text>
-                ) : null}
-                <Text style={styles.meta}>{regiao ? formatLocation(regiao) : 'ID da rota: ' + id}</Text>
-                <View style={styles.badges}>
-                  {regiao?.tipoCliente ? <ClientBadge label={regiao.tipoCliente} /> : null}
+                  {sectionErrors.regiao ? (
+                    <Text style={styles.warnText}>Dados parciais (fallback ativo)</Text>
+                  ) : null}
+                </View>
+                <View style={styles.regionHeadRight}>
+                  {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
                   {regiao?.ativo !== undefined ? (
                     <StatusBadge status={regiao.ativo ? 'Ativo' : 'Inativo'} />
                   ) : null}
-                  {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
                 </View>
               </View>
-            </AppCard>
 
-            <View style={[styles.sectionStack, isDesktop && styles.desktopColumns]}>
-              <AppCard
-                title="Risco atual"
-                subtitle="Consolidado ambiental para esta região."
-                variant="elevated"
-                style={isDesktop && styles.desktopColumnCard}>
-                {sectionErrors.risco ? (
-                  <ErrorState message={sectionErrors.risco} onRetry={loadDetails} />
-                ) : risco || effectiveRisk ? (
-                  <View style={styles.sectionStack}>
-                    {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
-                    {risco?.score !== undefined ? (
-                      <Text style={styles.metricLine}>Score consolidado: {risco.score}</Text>
-                    ) : null}
-                    {risco?.descricao ? <Text style={styles.meta}>{risco.descricao}</Text> : null}
-                    <Text style={styles.meta}>Atualizado em: {formatDate(risco?.atualizadoEm)}</Text>
-                  </View>
-                ) : (
-                  <EmptyState
-                    title="Risco não informado"
-                    description="Nenhum risco atual foi encontrado para esta região."
-                  />
-                )}
-              </AppCard>
+              {/* ── Top metric cards ─────────────────────── */}
+              <View style={[styles.topMetrics, isDesktop && styles.topMetricsDesktop]}>
+                <MetricCard
+                  label="Risco atual"
+                  value={effectiveRisk ?? '—'}
+                  supportingText={risco?.score !== undefined ? `Score: ${risco.score}` : 'Nível consolidado'}
+                  accentColor={riskColor(effectiveRisk)}
+                  icon="⚠"
+                  style={[styles.metric, isDesktop && styles.metricDesktop]}
+                />
+                <MetricCard
+                  label="Alertas ativos"
+                  value={regiao?.alertasAtivos !== undefined ? String(regiao.alertasAtivos) : '—'}
+                  supportingText="Ocorrências pendentes"
+                  accentColor="#EF6C00"
+                  icon="△"
+                  style={[styles.metric, isDesktop && styles.metricDesktop]}
+                />
+                <MetricCard
+                  label="Estações ativas"
+                  value={`${estacoes.filter((e) => e.ativa !== false).length}/${estacoes.length}`}
+                  supportingText="Sensores vinculados"
+                  accentColor="#009688"
+                  icon="●"
+                  style={[styles.metric, isDesktop && styles.metricDesktop]}
+                />
+                <MetricCard
+                  label="Última leitura"
+                  value={latest ? 'Disponível' : '—'}
+                  supportingText={latest ? formatDate(latest.dataHora) : 'Sem dados recentes'}
+                  accentColor="#3F51B5"
+                  icon="◎"
+                  style={[styles.metric, isDesktop && styles.metricDesktop]}
+                />
+              </View>
 
-              <AppCard
-                title="Estações IoT"
-                subtitle="Estações vinculadas à região monitorada."
-                variant="elevated"
-                style={isDesktop && styles.desktopColumnCard}>
-                {sectionErrors.estacoes ? (
-                  <ErrorState message={sectionErrors.estacoes} onRetry={loadDetails} />
-                ) : estacoes.length > 0 ? (
-                  <View style={styles.sectionStack}>
-                    {estacoes.map((estacao) => (
-                      <View key={String(estacao.id)} style={styles.listRow}>
-                        <View style={styles.rowText}>
-                          <Text style={styles.rowTitle}>{estacao.nome}</Text>
-                          <Text style={styles.meta}>{estacao.codigo ?? estacao.tipo ?? 'Sem código'}</Text>
-                          <Text style={styles.meta}>
-                            Última comunicação: {formatDate(estacao.ultimaLeituraEm)}
-                          </Text>
+              {/* ── Mid row ──────────────────────────────── */}
+              <View style={[styles.midRow, isDesktop && styles.midRowDesktop]}>
+
+                {/* Risk analysis */}
+                <AppCard
+                  title="Análise de Risco"
+                  subtitle="Consolidado ambiental para esta região."
+                  variant="elevated"
+                  style={[styles.panel, isDesktop && styles.panelLeft]}>
+                  {sectionErrors.risco ? (
+                    <ErrorState message={sectionErrors.risco} onRetry={loadDetails} />
+                  ) : risco || effectiveRisk ? (
+                    <View style={styles.riskBlock}>
+                      {effectiveRisk ? <RiskBadge nivel={effectiveRisk} /> : null}
+                      {risco?.score !== undefined ? (
+                        <View style={styles.scoreRow}>
+                          <Text style={styles.scoreLabel}>Score consolidado</Text>
+                          <Text style={styles.scoreValue}>{risco.score}</Text>
                         </View>
-                        <StatusBadge status={estacao.ativa === false ? 'Inativo' : 'Ativo'} />
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <EmptyState
-                    title="Nenhuma estação encontrada"
-                    description="Nenhuma estação foi encontrada para esta região."
-                  />
-                )}
-              </AppCard>
-            </View>
+                      ) : null}
+                      {risco?.descricao ? (
+                        <Text style={styles.riskDesc}>{risco.descricao}</Text>
+                      ) : null}
+                      <Text style={styles.riskMeta}>
+                        Atualizado: {formatDate(risco?.atualizadoEm)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <EmptyState title="Risco não informado" description="Nenhum risco atual encontrado." />
+                  )}
+                </AppCard>
 
-            <View style={[styles.sectionStack, isDesktop && styles.desktopColumns]}>
-              <AppCard
-                title="Últimas leituras"
-                subtitle="Leitura mais recente em cartões compactos."
-                variant="elevated"
-                style={isDesktop && styles.desktopMainCard}>
-                {sectionErrors.leituras ? (
-                  <ErrorState message={sectionErrors.leituras} onRetry={loadDetails} />
-                ) : latestReading ? (
-                  <View style={[styles.readingsGrid, isDesktop && styles.desktopReadingsGrid]}>
-                    {readingMetrics.map((metric) => (
-                      <MetricCard
-                        key={metric.label}
-                        label={metric.label}
-                        value={metric.value}
-                        supportingText={`Data: ${formatDate(latestReading.dataHora)}`}
-                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
-                      />
-                    ))}
-                    {latestReading.nivelAguaPercentual !== undefined ? (
-                      <MetricCard
-                        label="Nível de água"
-                        value={formatMetric(latestReading.nivelAguaPercentual, '%')}
-                        supportingText={`Distância: ${formatMetric(latestReading.distanciaAguaCm, 'cm')}`}
-                        accentColor={colors.primary}
-                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
-                      />
-                    ) : null}
-                    {latestReading.pm25 !== undefined || latestReading.pm10 !== undefined ? (
-                      <MetricCard
-                        label="Particulados"
-                        value={`PM2.5 ${formatMetric(latestReading.pm25)}`}
-                        supportingText={`PM10 ${formatMetric(latestReading.pm10)}`}
-                        accentColor={colors.warningOrange}
-                        style={[styles.readingMetric, isDesktop && styles.desktopReadingMetric]}
-                      />
-                    ) : null}
-                  </View>
-                ) : (
-                  <EmptyState
-                    title="Nenhuma leitura encontrada"
-                    description="Nenhuma leitura recente foi encontrada para esta região."
-                  />
-                )}
-              </AppCard>
+                {/* Leituras */}
+                <AppCard
+                  title="Leituras Ambientais"
+                  subtitle="Última leitura disponível das estações."
+                  variant="elevated"
+                  style={[styles.panel, isDesktop && styles.panelRight]}>
+                  {sectionErrors.leituras ? (
+                    <ErrorState message={sectionErrors.leituras} onRetry={loadDetails} />
+                  ) : latest ? (
+                    <View style={[styles.readingGrid, isDesktop && styles.readingGridDesktop]}>
+                      {readingMetrics.map((m) => (
+                        <View key={m.label} style={styles.readingItem}>
+                          <Text style={styles.readingIcon}>{m.icon}</Text>
+                          <Text style={styles.readingValue}>{m.value}</Text>
+                          <Text style={styles.readingLabel}>{m.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <EmptyState title="Sem leituras" description="Nenhuma leitura recente encontrada." />
+                  )}
+                </AppCard>
 
-              <AppCard
-                title="Alertas recentes"
-                subtitle="Acesse a lista consolidada de alertas ambientais."
-                variant="compact"
-                style={isDesktop && styles.desktopSideCard}>
-                <AppButton label="Ir para Alertas" href="/alertas" />
-              </AppCard>
-            </View>
-          </>
-        ) : null}
+              </View>
+
+              {/* ── Bottom row ────────────────────────────── */}
+              <View style={[styles.midRow, isDesktop && styles.midRowDesktop]}>
+
+                {/* Stations table */}
+                <AppCard
+                  title="Status das Estações"
+                  subtitle="Estações IoT vinculadas a esta região."
+                  variant="elevated"
+                  style={[styles.panel, isDesktop && styles.panelLeft]}>
+                  {sectionErrors.estacoes ? (
+                    <ErrorState message={sectionErrors.estacoes} onRetry={loadDetails} />
+                  ) : estacoes.length > 0 ? (
+                    <View style={styles.stationTable}>
+                      {isDesktop ? (
+                        <View style={styles.stHead}>
+                          <Text style={[styles.stTh, styles.stColId]}>ID</Text>
+                          <Text style={[styles.stTh, styles.stColNome]}>NOME DA ESTAÇÃO</Text>
+                          <Text style={[styles.stTh, styles.stColStatus]}>STATUS</Text>
+                          <Text style={[styles.stTh, styles.stColSync]}>ÚLTIMA SYNC</Text>
+                        </View>
+                      ) : null}
+                      {estacoes.map((estacao) => (
+                        <View key={String(estacao.id)} style={styles.stRow}>
+                          <Text style={[styles.stCell, styles.stColId]}>{estacao.codigo ?? String(estacao.id).slice(0, 8)}</Text>
+                          <Text style={[styles.stCell, styles.stColNome, styles.stNome]}>{estacao.nome}</Text>
+                          <View style={styles.stColStatus}>
+                            <StatusBadge status={estacao.ativa === false ? 'Inativo' : 'Ativo'} />
+                          </View>
+                          <Text style={[styles.stCell, styles.stColSync]}>{formatDate(estacao.ultimaLeituraEm)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <EmptyState title="Nenhuma estação" description="Nenhuma estação vinculada a esta região." />
+                  )}
+                </AppCard>
+
+                {/* Alerts shortcut */}
+                <AppCard
+                  title="Logs de Alerta"
+                  subtitle="Acesse o console de alertas desta região."
+                  variant="elevated"
+                  style={[styles.panel, isDesktop && styles.panelSide]}>
+                  <View style={styles.alertShortcut}>
+                    <Text style={styles.shortcutText}>
+                      Visualize e gerencie os alertas ambientais ativos e históricos desta região no console de alertas.
+                    </Text>
+                    <AppButton label="Ver Alertas" href="/alertas" />
+                  </View>
+                </AppCard>
+
+              </View>
+            </>
+          ) : null}
+
         </ScrollView>
       </SafeAreaView>
     </AppShell>
   );
 }
 
-function formatLocation(regiao: RegiaoReadModel): string {
-  const location = [regiao.cidade, regiao.estado].filter(Boolean).join(' / ');
-  return location || 'Localização não informada';
+function fmtNum(v?: number, suffix = ''): string {
+  return v === undefined ? '—' : `${v}${suffix}`;
 }
 
-function formatMetric(value?: number, suffix = ''): string {
-  return value === undefined ? '-' : `${value}${suffix}`;
-}
-
-function ClientBadge({ label }: { label: string }) {
-  return (
-    <View style={styles.clientBadge}>
-      <Text style={styles.clientBadgeText}>{label}</Text>
-    </View>
-  );
+function riskColor(nivel?: string): string {
+  if (nivel === 'CRITICO')  return '#D32F2F';
+  if (nivel === 'ALTO')     return '#EF6C00';
+  if (nivel === 'MODERADO') return '#F9A825';
+  return '#3F51B5';
 }
 
 const styles = StyleSheet.create({
-  identity: {
-    gap: spacing.xs,
-  },
-  sectionStack: {
-    gap: spacing.md,
-  },
-  desktopColumns: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  desktopColumnCard: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 360,
-  },
-  desktopMainCard: {
-    flexBasis: '68%',
-    flexGrow: 1,
-    minWidth: 520,
-  },
-  desktopSideCard: {
-    flexBasis: '28%',
-    flexGrow: 1,
-    minWidth: 280,
-  },
-  meta: {
-    color: colors.mutedText,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  warningText: {
-    color: colors.warningOrange,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  metricLine: {
-    color: colors.neutralText,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  badges: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  clientBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  clientBadgeText: {
-    color: colors.primaryBase,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  listRow: {
-    alignItems: 'flex-start',
-    borderBottomColor: colors.border,
+  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+
+  regionHead: { gap: spacing.sm },
+  regionHeadDesktop: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
+  regionHeadLeft: { flex: 1, gap: 2 },
+  regionHeadRight: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  regionName: { color: colors.neutralText, fontSize: 24, fontWeight: '700' },
+  regionMeta: { color: colors.mutedText, fontSize: 14, lineHeight: 20 },
+  warnText: { color: '#EF6C00', fontSize: 12, fontWeight: '600' },
+
+  topMetrics: { gap: spacing.sm },
+  topMetricsDesktop: { flexDirection: 'row', gap: spacing.md },
+  metric: { flex: 1 },
+  metricDesktop: { flexBasis: '22%', flexGrow: 1 },
+
+  midRow: { gap: spacing.md },
+  midRowDesktop: { alignItems: 'flex-start', flexDirection: 'row' },
+  panel: { flex: 1 },
+  panelLeft: { flexBasis: '60%', flexGrow: 1 },
+  panelRight: { flexBasis: '36%', flexGrow: 1 },
+  panelSide: { flexBasis: '36%', flexGrow: 1 },
+
+  riskBlock: { gap: 10 },
+  scoreRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
+  scoreLabel: { color: colors.mutedText, fontSize: 13 },
+  scoreValue: { color: colors.neutralText, fontSize: 24, fontWeight: '700' },
+  riskDesc: { color: colors.mutedText, fontSize: 13, lineHeight: 18 },
+  riskMeta: { color: colors.mutedText, fontSize: 12 },
+
+  readingGrid: { gap: spacing.sm },
+  readingGridDesktop: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  readingItem: { alignItems: 'center', flex: 1, gap: 3, minWidth: 80 },
+  readingIcon: { fontSize: 20 },
+  readingValue: { color: colors.neutralText, fontSize: 18, fontWeight: '700' },
+  readingLabel: { color: colors.mutedText, fontSize: 11, textAlign: 'center' },
+
+  stationTable: { gap: 0 },
+  stHead: {
+    backgroundColor: '#F8F9FB',
+    borderBottomColor: '#DDE1EA',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: spacing.md,
-    justifyContent: 'space-between',
-    paddingBottom: spacing.md,
+    paddingVertical: 8,
   },
-  rowText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  rowTitle: {
-    color: colors.neutralText,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  readingsGrid: {
-    gap: spacing.sm,
-  },
-  desktopReadingsGrid: {
+  stTh: { color: colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, paddingHorizontal: 6 },
+  stRow: {
+    alignItems: 'center',
+    borderBottomColor: '#EEF0F4',
+    borderBottomWidth: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    minHeight: 44,
+    paddingVertical: 6,
   },
-  readingMetric: {
-    minHeight: 108,
-  },
-  desktopReadingMetric: {
-    flexBasis: '30%',
-    flexGrow: 1,
-    minWidth: 180,
-  },
+  stCell: { color: colors.mutedText, fontSize: 13, paddingHorizontal: 6 },
+  stNome: { color: colors.neutralText, fontWeight: '600' },
+  stColId:     { width: 90 },
+  stColNome:   { flex: 1 },
+  stColStatus: { width: 80 },
+  stColSync:   { width: 110 },
+
+  alertShortcut: { gap: spacing.md },
+  shortcutText: { color: colors.mutedText, fontSize: 13, lineHeight: 19 },
 });
