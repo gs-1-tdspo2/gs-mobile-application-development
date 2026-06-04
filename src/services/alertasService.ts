@@ -1,13 +1,12 @@
-import { api } from '@/services/api';
+import { api, webGet } from '@/services/api';
 import { Alerta, AlertaReadModel } from '@/types/alerta';
 import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
 
 export async function getAlertas(): Promise<AlertaReadModel[]> {
-  const response = await api.get<Alerta[] | unknown>('/api/alertas');
-  const alertas = ensureArray<Alerta>(response.data).map(normalizeAlerta);
+  const data = await webGet<Alerta[] | unknown>('/api/alertas');
+  const alertas = ensureArray<Alerta>(data).map(normalizeAlerta);
 
   if (__DEV__) {
-    console.log('[AlertasService] raw response.data', response.data);
     console.log('[AlertasService] normalized alertas', alertas);
   }
 
@@ -57,75 +56,45 @@ function ensureArray<T>(value: unknown): T[] {
     const data = (parsed as { data?: unknown }).data;
     const items = (parsed as { items?: unknown }).items;
 
-    if (Array.isArray(content)) {
-      return content as T[];
-    }
-
-    if (Array.isArray(data)) {
-      return data as T[];
-    }
-
-    if (Array.isArray(items)) {
-      return items as T[];
-    }
+    if (Array.isArray(content)) return content as T[];
+    if (Array.isArray(data))    return data as T[];
+    if (Array.isArray(items))   return items as T[];
   }
 
   return [];
 }
 
 function parseJsonIfNeeded(value: unknown): unknown {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); } catch { return value; }
 }
 
 function pickValue(source: Record<string, unknown>, keys: string[]): number | string | undefined {
   for (const key of keys) {
     const value = source[key];
-    if (typeof value === 'number' || typeof value === 'string') {
-      return value;
-    }
+    if (typeof value === 'number' || typeof value === 'string') return value;
   }
-
   return undefined;
 }
 
 function pickString(source: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = source[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value;
-    }
+    if (typeof value === 'string' && value.trim()) return value;
   }
-
   return undefined;
 }
 
 function pickBoolean(source: Record<string, unknown>, keys: string[]): boolean | undefined {
   for (const key of keys) {
     const value = source[key];
-
-    if (typeof value === 'boolean') {
-      return value;
-    }
-
+    if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {
-      const normalized = normalizeStatus(value);
-      if (['ATIVO', 'ACTIVE', 'TRUE', 'S', 'SIM', 'RESOLVIDO'].includes(normalized)) {
-        return true;
-      }
-      if (['INATIVO', 'INACTIVE', 'FALSE', 'N', 'NAO'].includes(normalized)) {
-        return false;
-      }
+      const n = normalizeStatus(value);
+      if (['ATIVO', 'ACTIVE', 'TRUE', 'S', 'SIM', 'RESOLVIDO'].includes(n)) return true;
+      if (['INATIVO', 'INACTIVE', 'FALSE', 'N', 'NAO'].includes(n)) return false;
     }
   }
-
   return undefined;
 }
 
@@ -135,20 +104,14 @@ function pickRisk(source: Record<string, unknown>, keys: string[]): RiscoNivel |
     if (typeof value === 'string') {
       const normalized = normalizeStatus(value);
       const risk = RISCO_NIVEIS.find((nivel) => nivel === normalized);
-      if (risk) {
-        return risk;
-      }
+      if (risk) return risk;
     }
   }
-
   return undefined;
 }
 
 function normalizeStatus(value?: string): string {
   return (
-    value
-      ?.normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toUpperCase() ?? ''
+    value?.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase() ?? ''
   );
 }

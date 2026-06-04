@@ -1,15 +1,15 @@
-import { api } from '@/services/api';
+import { webGet } from '@/services/api';
 import { DashboardSummary, DashboardSummaryRaw } from '@/types/dashboard';
 import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   try {
-    const response = await api.get<DashboardSummaryRaw | unknown>('/api/dashboard/summary');
-    const raw = normalizeRawDashboardResponse(response.data);
+    const data = await webGet<DashboardSummaryRaw | unknown>('/api/dashboard/summary');
+    const raw = normalizeRawDashboardResponse(data);
     const normalized = normalizeDashboardSummary(raw);
 
     if (__DEV__) {
-      console.log('[DashboardService] raw response.data', response.data);
+      console.log('[DashboardService] raw data', data);
       console.log('[DashboardService] normalized summary', normalized);
     }
 
@@ -28,8 +28,7 @@ export async function buscarResumoDashboard(): Promise<DashboardSummary> {
 }
 
 export async function verificarSaudeApi(): Promise<unknown> {
-  const response = await api.get('/api/health');
-  return response.data;
+  return webGet('/api/health');
 }
 
 function normalizeDashboardSummary(raw: DashboardSummaryRaw): DashboardSummary {
