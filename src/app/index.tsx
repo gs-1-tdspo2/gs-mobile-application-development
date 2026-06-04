@@ -33,7 +33,6 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Dashboard Operacional</Text>
-          <Text style={styles.subtitle}>Monitoramento climático e ambiental das regiões vulneráveis</Text>
 
           {isLoading ? (
             <Text style={styles.status}>Carregando...</Text>
@@ -84,10 +83,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#1f2937',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
   },
   status: {
     fontSize: 14,

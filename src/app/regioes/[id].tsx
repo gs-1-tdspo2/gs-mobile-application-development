@@ -112,7 +112,6 @@ export default function RegiaoDetalheScreen() {
               {/* ── Region header ─────────────────────────── */}
               <View style={[styles.regionHead, isDesktop && styles.regionHeadDesktop]}>
                 <View style={styles.regionHeadLeft}>
-                  <Text style={styles.eyebrow}>DETALHE DA REGIÃO</Text>
                   <Text style={styles.regionName}>{regiao?.nome ?? `Região ${id ?? ''}`}</Text>
                   <Text style={styles.regionMeta}>
                     {[regiao?.cidade, regiao?.estado].filter(Boolean).join(' / ') || 'Localização não informada'}
@@ -296,8 +295,6 @@ function riskColor(nivel?: string): string {
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
-
   regionHead: { gap: spacing.sm },
   regionHeadDesktop: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
   regionHeadLeft: { flex: 1, gap: 2 },

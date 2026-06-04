@@ -70,13 +70,7 @@ export default function RegioesScreen() {
 
           {/* ── Header ──────────────────────────────── */}
           <View style={styles.head}>
-            <View>
-              <Text style={styles.eyebrow}>MONITORAMENTO</Text>
-              <Text style={styles.title}>Regiões Monitoradas</Text>
-              <Text style={styles.subtitle}>
-                Carteira de áreas com risco, status e acesso ao detalhe operacional.
-              </Text>
-            </View>
+            <Text style={styles.title}>Regiões Monitoradas</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{regioes.length} regiões</Text>
             </View>
@@ -238,9 +232,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     justifyContent: 'space-between',
   },
-  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
   title:   { color: colors.neutralText, fontSize: 22, fontWeight: '700' },
-  subtitle:{ color: colors.mutedText, fontSize: 13, lineHeight: 18, marginTop: 2 },
   badge: {
     backgroundColor: '#EEF2FF',
     borderColor: '#C5CAE9',

@@ -178,9 +178,7 @@ export default function GerenciarRegioesScreen() {
             {/* ── Page header ──────────────────────────── */}
             <View style={[styles.head, isDesktop && styles.headDesktop]}>
               <View style={styles.headText}>
-                <Text style={styles.eyebrow}>ADMINISTRAÇÃO</Text>
                 <Text style={styles.title}>Gerenciar Regiões</Text>
-                <Text style={styles.subtitle}>Cadastro administrativo das regiões monitoradas.</Text>
               </View>
               {isDesktop ? (
                 <AppButton label="+ Nova Região" onPress={openCreate} style={styles.newBtn} />
@@ -469,9 +467,7 @@ const styles = StyleSheet.create({
   head: { gap: spacing.xs },
   headDesktop: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
   headText: { flex: 1, gap: 2 },
-  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
   title: { color: colors.neutralText, fontSize: 22, fontWeight: '700' },
-  subtitle: { color: colors.mutedText, fontSize: 13, lineHeight: 18, marginTop: 2 },
   newBtn: { minWidth: 150 },
 
   toast: { borderRadius: 6, borderWidth: 1, padding: 12 },

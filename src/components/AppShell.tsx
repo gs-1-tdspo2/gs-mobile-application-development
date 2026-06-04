@@ -1,5 +1,5 @@
 import { Href, useRouter } from 'expo-router';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useResponsiveLayout } from '@/utils/responsive';
@@ -20,6 +20,28 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'indicadores', label: 'Indicadores',        href: '/indicadores'       },
 ];
 
+type NavRowProps = { item: NavItem; active: boolean; onPress: () => void };
+
+function NavRow({ item, active, onPress }: NavRowProps) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={[
+        styles.navItem,
+        hovered && !active && styles.navItemHovered,
+        active && styles.navItemActive,
+      ]}>
+      <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+        {item.label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function AppShell({ activeRoute, children }: AppShellProps) {
   const { isDesktop } = useResponsiveLayout();
   const router = useRouter();
@@ -36,19 +58,14 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
         </View>
 
         <ScrollView style={styles.nav} showsVerticalScrollIndicator={false}>
-          {NAV_ITEMS.map((item) => {
-            const active = item.key === activeRoute;
-            return (
-              <Pressable
-                key={item.key}
-                onPress={() => router.push(item.href)}
-                style={[styles.navItem, active && styles.navItemActive]}>
-                <Text style={[styles.navLabel, active && styles.navLabelActive]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {NAV_ITEMS.map((item) => (
+            <NavRow
+              key={item.key}
+              item={item}
+              active={item.key === activeRoute}
+              onPress={() => router.push(item.href)}
+            />
+          ))}
         </ScrollView>
       </View>
 
@@ -63,39 +80,48 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F4F5F7',
   },
 
   sidebar: {
-    width: 220,
+    width: 240,
     backgroundColor: '#3F51B5',
     flexDirection: 'column',
   },
 
   brand: {
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.15)',
   },
   brandText: {
     color: '#ffffff',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
   nav: {
     flex: 1,
   },
+  // borderLeftWidth is always 3 on every nav item (transparent when inactive).
+  // This keeps text horizontally aligned whether or not the active border is showing.
   navItem: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 11,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
+  },
+  navItemHovered: {
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   navItemActive: {
     backgroundColor: 'rgba(255,255,255,0.18)',
+    borderLeftColor: '#ffffff',
   },
   navLabel: {
-    color: 'rgba(255,255,255,0.80)',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
   },
   navLabelActive: {
@@ -105,6 +131,6 @@ const styles = StyleSheet.create({
 
   main: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F4F5F7',
   },
 });

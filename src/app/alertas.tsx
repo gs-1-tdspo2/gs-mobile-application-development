@@ -113,11 +113,7 @@ export default function AlertasScreen() {
           ]}>
 
           {/* ── Page header ──────────────────────────── */}
-          <View>
-            <Text style={styles.eyebrow}>CONSOLE DE ALERTAS</Text>
-            <Text style={styles.title}>Alertas Ambientais</Text>
-            <Text style={styles.subtitle}>Console de ocorrências com severidade, status e resolução.</Text>
-          </View>
+          <Text style={styles.title}>Alertas Ambientais</Text>
 
           {/* ── Summary cards ────────────────────────── */}
           <View style={[styles.summaryRow, isDesktop && styles.summaryRowDesktop]}>
@@ -319,9 +315,7 @@ const mob = StyleSheet.create({
 /* ── Screen styles ───────────────────────────────────── */
 
 const styles = StyleSheet.create({
-  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
   title:   { color: colors.neutralText, fontSize: 22, fontWeight: '700' },
-  subtitle:{ color: colors.mutedText, fontSize: 13, lineHeight: 18, marginTop: 2 },
 
   summaryRow: { gap: spacing.sm },
   summaryRowDesktop: { flexDirection: 'row', gap: spacing.md },

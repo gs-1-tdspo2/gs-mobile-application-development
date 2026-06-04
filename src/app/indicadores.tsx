@@ -53,11 +53,7 @@ export default function IndicadoresScreen() {
           ]}>
 
           {/* ── Page header ─────────────────────────── */}
-          <View>
-            <Text style={styles.eyebrow}>RELATÓRIO DE ANALYTICS</Text>
-            <Text style={styles.title}>Indicadores Regionais</Text>
-            <Text style={styles.subtitle}>Análise operacional de risco, cobertura e ocorrências ambientais.</Text>
-          </View>
+          <Text style={styles.title}>Indicadores Regionais</Text>
 
           {/* ── Metric cards ────────────────────────── */}
           <View style={[styles.metricsRow, isDesktop && styles.metricsRowDesktop]}>
@@ -169,9 +165,7 @@ export default function IndicadoresScreen() {
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { color: colors.primary500, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
   title:   { color: colors.neutralText, fontSize: 22, fontWeight: '700' },
-  subtitle:{ color: colors.mutedText, fontSize: 13, lineHeight: 18, marginTop: 2 },
 
   metricsRow: { gap: spacing.sm },
   metricsRowDesktop: { flexDirection: 'row', gap: spacing.md },
