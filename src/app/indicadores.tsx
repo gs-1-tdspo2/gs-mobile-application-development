@@ -23,6 +23,19 @@ const rankingDemo = [
   { nome: 'Encosta Vila Nova Esperança', percentual: 72 },
 ];
 
+const distribuicaoDemo = [
+  { label: 'Risco baixo', value: 42, color: '#2E7D32' },
+  { label: 'Moderado', value: 31, color: colors.warningOrange },
+  { label: 'Alto', value: 18, color: colors.highRisk },
+  { label: 'Crítico', value: 9, color: colors.criticalRed },
+];
+
+const historicoDemo = [
+  'Risco hídrico revisado nas regiões ribeirinhas.',
+  'Alertas críticos priorizados para Defesa Civil.',
+  'Indicadores preparados para integração com /api/indicadores-regionais.',
+];
+
 export default function IndicadoresScreen() {
   const { isDesktop } = useResponsiveLayout();
 
@@ -37,8 +50,7 @@ export default function IndicadoresScreen() {
         <View style={screenStyles.header}>
           <Text style={screenStyles.title}>Indicadores regionais</Text>
           <Text style={screenStyles.subtitle}>
-            Visão compacta para a demonstração final. A integração analítica completa fica preparada
-            para evoluir sobre /api/indicadores-regionais.
+            Painel analítico leve para comparar risco regional, cobertura e ocorrências ambientais.
           </Text>
         </View>
 
@@ -76,18 +88,47 @@ export default function IndicadoresScreen() {
           </AppCard>
 
           <AnalyticsPanel
-            title="Analytics leve"
-            subtitle="Painel indigo para web, alinhado ao Stitch desktop sem dependência de biblioteca gráfica."
+            title="Distribuição de risco"
+            subtitle="Composição visual simples para leitura executiva, sem biblioteca gráfica."
             style={isDesktop && styles.analyticsCard}>
             <View style={styles.analyticsContent}>
-              <StatusBadge status="Em desenvolvimento" />
-              <Text style={styles.analyticsText}>
-                Próxima evolução: consumir /api/indicadores-regionais e substituir os dados de
-                demonstração por métricas reais.
-              </Text>
+              {distribuicaoDemo.map((item) => (
+                <View key={item.label} style={styles.distributionItem}>
+                  <View style={styles.distributionHeader}>
+                    <Text style={styles.distributionLabel}>{item.label}</Text>
+                    <Text style={styles.distributionValue}>{item.value}%</Text>
+                  </View>
+                  <View style={styles.darkTrack}>
+                    <View
+                      style={[
+                        styles.darkProgress,
+                        { backgroundColor: item.color, width: `${item.value}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ))}
             </View>
           </AnalyticsPanel>
         </View>
+
+        <AppCard
+          title="Histórico operacional"
+          subtitle="Eventos recentes para orientar a apresentação do painel."
+          variant="elevated">
+          <View style={styles.historyList}>
+            {historicoDemo.map((item) => (
+              <View key={item} style={styles.historyItem}>
+                <View style={styles.historyDot} />
+                <Text style={styles.historyText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        </AppCard>
+
+        <AppCard title="Status da integração" subtitle="Tela pronta para evoluir com dados reais." variant="compact">
+          <StatusBadge status="Em desenvolvimento" />
+        </AppCard>
         </ScrollView>
       </SafeAreaView>
     </AppShell>
@@ -164,6 +205,55 @@ const styles = StyleSheet.create({
   },
   analyticsText: {
     color: colors.analyticsSurface,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  distributionItem: {
+    gap: spacing.xs,
+  },
+  distributionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  distributionLabel: {
+    color: colors.analyticsSurface,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  distributionValue: {
+    color: colors.offWhite,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  darkTrack: {
+    backgroundColor: '#FFFFFF24',
+    borderRadius: 999,
+    height: 8,
+    overflow: 'hidden',
+  },
+  darkProgress: {
+    borderRadius: 999,
+    height: 8,
+  },
+  historyList: {
+    gap: spacing.md,
+  },
+  historyItem: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  historyDot: {
+    backgroundColor: colors.primaryAccent,
+    borderRadius: 999,
+    height: 8,
+    marginTop: 6,
+    width: 8,
+  },
+  historyText: {
+    color: colors.mutedText,
+    flex: 1,
     fontSize: 14,
     lineHeight: 20,
   },

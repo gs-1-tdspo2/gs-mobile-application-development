@@ -169,6 +169,13 @@ export default function AlertasScreen() {
             accentColor={colors.criticalRed}
             style={isDesktop && styles.summaryMetric}
           />
+          <MetricCard
+            label="Resolvidos"
+            value={summary.resolvidos}
+            supportingText="Histórico encerrado"
+            accentColor={colors.deepGreen}
+            style={isDesktop && styles.summaryMetric}
+          />
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -212,37 +219,42 @@ export default function AlertasScreen() {
                   key={String(alerta.id)}
                   title={alerta.titulo}
                   subtitle={alerta.descricao}
+                  variant={isCritical && !alerta.resolvido ? 'critical' : 'compact'}
                   style={[
                     isDesktop && styles.desktopAlertCard,
-                    isCritical && !alerta.resolvido ? styles.criticalCard : undefined,
                   ]}>
-                  <View style={styles.cardContent}>
-                    <View style={styles.badges}>
-                      {alerta.nivel ? <RiskBadge nivel={alerta.nivel} /> : null}
-                      <StatusBadge status={alerta.resolvido ? 'Resolvido' : 'Ativo'} />
-                      {alerta.tipoAlerta ? <TypeBadge label={alerta.tipoAlerta} /> : null}
+                  <View style={[styles.cardContent, isDesktop && styles.desktopCardContent]}>
+                    <View style={styles.alertMetaBlock}>
+                      <View style={styles.badges}>
+                        {alerta.nivel ? <RiskBadge nivel={alerta.nivel} /> : null}
+                        <StatusBadge status={alerta.resolvido ? 'Resolvido' : 'Ativo'} />
+                        {alerta.tipoAlerta ? <TypeBadge label={alerta.tipoAlerta} /> : null}
+                      </View>
+
+                      <Text style={styles.meta}>
+                        Região: {alerta.regiaoNome ?? alerta.regiaoId ?? 'não informada'}
+                      </Text>
+                      <Text style={styles.meta}>Data: {formatDate(alerta.criadoEm)}</Text>
+                      {alerta.recomendacao ? (
+                        <Text style={styles.recommendation}>{alerta.recomendacao}</Text>
+                      ) : null}
                     </View>
 
-                    <Text style={styles.meta}>
-                      Região: {alerta.regiaoNome ?? alerta.regiaoId ?? 'não informada'}
-                    </Text>
-                    <Text style={styles.meta}>Data: {formatDate(alerta.criadoEm)}</Text>
-                    {alerta.recomendacao ? (
-                      <Text style={styles.recommendation}>{alerta.recomendacao}</Text>
-                    ) : null}
-
-                    {!alerta.resolvido ? (
-                      <AppButton
-                        label={resolvingId === alerta.id ? 'Resolvendo...' : 'Resolver alerta'}
-                        onPress={() => confirmResolve(alerta)}
-                        disabled={resolvingId === alerta.id}
-                        variant={isCritical ? 'danger' : 'primary'}
-                      />
-                    ) : (
-                      <Text style={styles.resolvedText}>
-                        Resolvido em: {formatDate(alerta.resolvidoEm)}
-                      </Text>
-                    )}
+                    <View style={styles.alertAction}>
+                      {!alerta.resolvido ? (
+                        <AppButton
+                          label={resolvingId === alerta.id ? 'Resolvendo...' : 'Resolver alerta'}
+                          onPress={() => confirmResolve(alerta)}
+                          disabled={resolvingId === alerta.id}
+                          variant={isCritical ? 'danger' : 'primary'}
+                          style={styles.resolveButton}
+                        />
+                      ) : (
+                        <Text style={styles.resolvedText}>
+                          Resolvido em: {formatDate(alerta.resolvidoEm)}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </AppCard>
               );
@@ -285,7 +297,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   summaryMetric: {
-    flexBasis: '30%',
+    flexBasis: '22%',
     flexGrow: 1,
     minWidth: 220,
   },
@@ -298,21 +310,27 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   desktopList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.md,
   },
   desktopAlertCard: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 380,
-  },
-  criticalCard: {
-    backgroundColor: colors.criticalSoftBackground,
-    borderColor: colors.criticalRed,
+    borderColor: '#D8DEEA',
   },
   cardContent: {
     gap: spacing.sm,
+  },
+  desktopCardContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  alertMetaBlock: {
+    flex: 1,
+    gap: spacing.sm,
+    minWidth: 300,
+  },
+  alertAction: {
+    alignItems: 'flex-end',
+    minWidth: 180,
   },
   badges: {
     alignItems: 'center',
@@ -335,6 +353,10 @@ const styles = StyleSheet.create({
     color: '#166534',
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'right',
+  },
+  resolveButton: {
+    minWidth: 160,
   },
   typeBadge: {
     alignSelf: 'flex-start',

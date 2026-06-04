@@ -218,18 +218,28 @@ export default function GerenciarRegioesScreen() {
               screenStyles.scrollContent,
               isDesktop && screenStyles.desktopScrollContent,
             ]}>
-          <View style={screenStyles.header}>
-            <Text style={screenStyles.title}>Gerenciar Regiões</Text>
-            <Text style={screenStyles.subtitle}>
-              Cadastro administrativo das regiões monitoradas pelo MVP Amanajé.
-            </Text>
+          <View style={[screenStyles.header, isDesktop && styles.desktopHeader]}>
+            <View style={styles.headerCopy}>
+              <Text style={screenStyles.title}>Gerenciar Regiões</Text>
+              <Text style={screenStyles.subtitle}>
+                Cadastro administrativo das regiões monitoradas pelo MVP Amanajé.
+              </Text>
+            </View>
+            {isDesktop ? (
+              <AppButton label="Nova Região" onPress={openCreateForm} style={styles.headerButton} />
+            ) : null}
           </View>
 
           {feedback ? <InlineFeedback type={feedback.type} message={feedback.message} /> : null}
 
-          <AppCard title="Ações rápidas" subtitle="Crie uma nova região ou atualize a lista da API.">
+          <AppCard
+            title="Ações rápidas"
+            subtitle="Crie uma nova região ou atualize a lista da API."
+            variant="compact">
             <View style={styles.actionsRow}>
-              <AppButton label="Nova Região" onPress={openCreateForm} style={styles.actionButton} />
+              {!isDesktop ? (
+                <AppButton label="Nova Região" onPress={openCreateForm} style={styles.actionButton} />
+              ) : null}
               <AppButton
                 label="Atualizar"
                 onPress={() => {
@@ -245,6 +255,7 @@ export default function GerenciarRegioesScreen() {
             <AppCard
               title={formTitle}
               subtitle="Campos marcados como obrigatórios são validados antes do envio."
+              variant="elevated"
               style={isDesktop && styles.desktopFormCard}>
               <View style={styles.form}>
                 {validationMessage ? (
@@ -353,16 +364,19 @@ export default function GerenciarRegioesScreen() {
                   key={String(regiao.id)}
                   title={regiao.nome}
                   subtitle={regiao.descricao}
+                  variant="compact"
                   style={isDesktop && styles.desktopListCard}>
-                  <View style={styles.cardContent}>
-                    <Text style={styles.meta}>{formatLocation(regiao)}</Text>
-                    <View style={styles.badges}>
-                      {regiao.tipoCliente ? (
-                        <View style={styles.clientBadge}>
-                          <Text style={styles.clientBadgeText}>{regiao.tipoCliente}</Text>
-                        </View>
-                      ) : null}
-                      {getStatusBadge(regiao) ? <StatusBadge status={getStatusBadge(regiao)!} /> : null}
+                  <View style={[styles.cardContent, isDesktop && styles.desktopCardContent]}>
+                    <View style={styles.regionMetaBlock}>
+                      <Text style={styles.meta}>{formatLocation(regiao)}</Text>
+                      <View style={styles.badges}>
+                        {regiao.tipoCliente ? (
+                          <View style={styles.clientBadge}>
+                            <Text style={styles.clientBadgeText}>{regiao.tipoCliente}</Text>
+                          </View>
+                        ) : null}
+                        {getStatusBadge(regiao) ? <StatusBadge status={getStatusBadge(regiao)!} /> : null}
+                      </View>
                     </View>
                     <View style={styles.actionsRow}>
                       <AppButton
@@ -525,6 +539,18 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  desktopHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  headerCopy: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  headerButton: {
+    minWidth: 160,
+  },
   actionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -574,17 +600,23 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   desktopList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.md,
   },
   desktopListCard: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 360,
+    borderColor: '#D8DEEA',
   },
   cardContent: {
     gap: spacing.sm,
+  },
+  desktopCardContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  regionMetaBlock: {
+    flex: 1,
+    gap: spacing.sm,
+    minWidth: 280,
   },
   meta: {
     color: colors.mutedText,

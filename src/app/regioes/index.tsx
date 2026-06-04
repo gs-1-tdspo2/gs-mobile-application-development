@@ -127,32 +127,37 @@ export default function RegioesScreen() {
                 href={{ pathname: '/regioes/[id]', params: { id: String(regiao.id) } }}
                 asChild>
                 <Pressable
-                  style={({ pressed }) => [
+                  style={({ hovered, pressed }) => [
                     isDesktop && styles.desktopCardPressable,
+                    hovered && styles.hoveredCard,
                     pressed && styles.pressed,
                   ]}>
                   <AppCard
                     title={regiao.nome}
                     subtitle={regiao.descricao}
+                    variant="compact"
                     style={isDesktop && styles.desktopCard}>
-                    <View style={styles.cardContent}>
-                      <Text style={styles.meta}>{formatLocation(regiao)}</Text>
-                      <View style={styles.badges}>
-                        {regiao.tipoCliente ? (
-                          <View style={styles.clientBadge}>
-                            <Text style={styles.clientBadgeText}>{regiao.tipoCliente}</Text>
-                          </View>
-                        ) : null}
-                        {regiao.ativo !== undefined ? (
-                          <StatusBadge status={regiao.ativo ? 'Ativo' : 'Inativo'} />
-                        ) : null}
-                        {regiao.riscoNivel ? <RiskBadge nivel={regiao.riscoNivel} /> : null}
+                    <View style={[styles.cardContent, isDesktop && styles.desktopCardContent]}>
+                      <View style={styles.regionMain}>
+                        <Text style={styles.meta}>{formatLocation(regiao)}</Text>
+                        <View style={styles.badges}>
+                          {regiao.tipoCliente ? (
+                            <View style={styles.clientBadge}>
+                              <Text style={styles.clientBadgeText}>{regiao.tipoCliente}</Text>
+                            </View>
+                          ) : null}
+                          {regiao.ativo !== undefined ? (
+                            <StatusBadge status={regiao.ativo ? 'Ativo' : 'Inativo'} />
+                          ) : null}
+                          {regiao.riscoNivel ? <RiskBadge nivel={regiao.riscoNivel} /> : null}
+                        </View>
                       </View>
-                      {regiao.alertasAtivos !== undefined ? (
-                        <Text style={styles.alerts}>
-                          {regiao.alertasAtivos} alerta(s) ativo(s)
-                        </Text>
-                      ) : null}
+                      <View style={styles.regionAction}>
+                        {regiao.alertasAtivos !== undefined ? (
+                          <Text style={styles.alerts}>{regiao.alertasAtivos} alerta(s)</Text>
+                        ) : null}
+                        <Text style={styles.detailAction}>Ver detalhes</Text>
+                      </View>
                     </View>
                   </AppCard>
                 </Pressable>
@@ -195,14 +200,30 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   desktopCardPressable: {
-    flexBasis: '48%',
+    flexBasis: '100%',
     flexGrow: 1,
-    minWidth: 360,
+  },
+  hoveredCard: {
+    transform: [{ translateY: -1 }],
   },
   desktopCard: {
-    minHeight: 178,
+    borderColor: '#D8DEEA',
   },
   cardContent: {
+    gap: spacing.sm,
+  },
+  desktopCardContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  regionMain: {
+    flex: 1,
+    gap: spacing.sm,
+    minWidth: 260,
+  },
+  regionAction: {
+    alignItems: 'flex-end',
     gap: spacing.sm,
   },
   meta: {
@@ -232,7 +253,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  detailAction: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryAccent,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: colors.primaryBase,
+    fontSize: 13,
+    fontWeight: '800',
+    overflow: 'hidden',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   pressed: {
-    opacity: 0.84,
+    opacity: 0.9,
+    transform: [{ translateY: 1 }],
   },
 });

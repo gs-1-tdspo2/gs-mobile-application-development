@@ -146,7 +146,7 @@ export default function RegiaoDetalheScreen() {
 
         {!isLoading && !errorMessage ? (
           <>
-            <AppCard title={regiao?.nome ?? 'Identidade da região'}>
+            <AppCard title={regiao?.nome ?? 'Identidade da região'} variant="elevated">
               <View style={styles.identity}>
                 {sectionErrors.regiao ? (
                   <Text style={styles.warningText}>
@@ -169,6 +169,7 @@ export default function RegiaoDetalheScreen() {
               <AppCard
                 title="Risco atual"
                 subtitle="Consolidado retornado pela API para esta região."
+                variant="elevated"
                 style={isDesktop && styles.desktopColumnCard}>
                 {sectionErrors.risco ? (
                   <ErrorState message={sectionErrors.risco} onRetry={loadDetails} />
@@ -192,6 +193,7 @@ export default function RegiaoDetalheScreen() {
               <AppCard
                 title="Estações IoT"
                 subtitle="Estações vinculadas à região monitorada."
+                variant="elevated"
                 style={isDesktop && styles.desktopColumnCard}>
                 {sectionErrors.estacoes ? (
                   <ErrorState message={sectionErrors.estacoes} onRetry={loadDetails} />
@@ -223,6 +225,7 @@ export default function RegiaoDetalheScreen() {
               <AppCard
                 title="Últimas leituras"
                 subtitle="Leitura mais recente em cartões compactos."
+                variant="elevated"
                 style={isDesktop && styles.desktopMainCard}>
                 {sectionErrors.leituras ? (
                   <ErrorState message={sectionErrors.leituras} onRetry={loadDetails} />
@@ -267,6 +270,7 @@ export default function RegiaoDetalheScreen() {
               <AppCard
                 title="Alertas recentes"
                 subtitle="Acesse a lista consolidada de alertas ambientais."
+                variant="compact"
                 style={isDesktop && styles.desktopSideCard}>
                 <AppButton label="Ir para Alertas" href="/alertas" />
               </AppCard>
