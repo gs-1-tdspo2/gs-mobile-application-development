@@ -20,27 +20,24 @@ import { useResponsiveLayout } from '@/utils/responsive';
 export default function HomeScreen() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { isDesktop } = useResponsiveLayout();
 
-  const loadDashboard = useCallback(async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
-    setErrorMessage(null);
+    setError(null);
     try {
       const data = await getDashboardSummary();
       setSummary(data);
-      setErrorMessage(null);
-    } catch (error) {
+    } catch (e) {
       setSummary(null);
-      setErrorMessage(getApiErrorMessage(error));
+      setError(getApiErrorMessage(e));
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void Promise.resolve().then(loadDashboard);
-  }, [loadDashboard]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   return (
     <AppShell activeRoute="dashboard">
@@ -51,155 +48,145 @@ export default function HomeScreen() {
             isDesktop && screenStyles.desktopScrollContent,
           ]}>
 
-          {/* ── Page header ─────────────────────────────── */}
-          <View style={[styles.pageHeader, isDesktop && styles.pageHeaderDesktop]}>
-            <View style={styles.pageHeaderText}>
-              <Text style={styles.pageTitle}>Dashboard Operacional</Text>
-              <Text style={styles.pageSubtitle}>
-                Monitoramento climático e ambiental das regiões vulneráveis
-              </Text>
+          {/* ── Page header ─────────────────────────── */}
+          <View style={styles.pageHead}>
+            <View>
+              <Text style={styles.eyebrow}>PAINEL OPERACIONAL</Text>
+              <Text style={styles.title}>Dashboard Operacional</Text>
+              <Text style={styles.subtitle}>Monitoramento climático e ambiental das regiões vulneráveis</Text>
             </View>
-
-            <View style={styles.apiChip}>
-              <View style={[styles.chipDot, errorMessage ? styles.chipDotError : null]} />
-              <View>
-                <Text style={styles.chipLabel}>
-                  {errorMessage ? 'Sem conexão' : 'API Online'}
-                </Text>
-                {!errorMessage && summary?.atualizadoEm ? (
-                  <Text style={styles.chipMeta}>
-                    {formatTimestamp(summary.atualizadoEm)}
-                  </Text>
-                ) : null}
+            {summary?.atualizadoEm ? (
+              <View style={styles.updatedChip}>
+                <Text style={styles.updatedText}>Atualizado {fmtTime(summary.atualizadoEm)}</Text>
               </View>
+            ) : null}
+          </View>
+
+          {/* ── Metrics row ──────────────────────────── */}
+          {isLoading ? (
+            <LoadingState message="Carregando indicadores..." />
+          ) : (
+            <View style={[styles.metricsRow, isDesktop && styles.metricsRowDesktop]}>
+              <MetricCard
+                label="Regiões monitoradas"
+                value={fmt(summary?.totalRegioes)}
+                supportingText="Áreas ativas"
+                accentColor="#3F51B5"
+                icon="◎"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
+              <MetricCard
+                label="Estações ativas"
+                value={fmt(summary?.totalEstacoesAtivas)}
+                supportingText="Sensores em operação"
+                accentColor="#009688"
+                icon="●"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
+              <MetricCard
+                label="Alertas ativos"
+                value={fmt(summary?.alertasAtivos)}
+                supportingText="Aguardando ação"
+                accentColor="#EF6C00"
+                icon="△"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
+              <MetricCard
+                label="Alertas críticos"
+                value={fmt(summary?.alertasCriticos)}
+                supportingText="Prioridade imediata"
+                accentColor="#D32F2F"
+                icon="!"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
+              <MetricCard
+                label="Leituras válidas"
+                value={fmt(summary?.leiturasValidas)}
+                supportingText="Amostras aceitas"
+                accentColor="#2E7D32"
+                icon="✓"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
+              <MetricCard
+                label="Maior risco atual"
+                value={summary?.maiorRiscoAtual ?? '—'}
+                supportingText="Nível consolidado"
+                accentColor={riskAccent(summary?.maiorRiscoAtual)}
+                icon="⚠"
+                style={[styles.metric, isDesktop && styles.metricDesktop]}
+              />
             </View>
-          </View>
+          )}
 
-          {/* ── Loading ──────────────────────────────────── */}
-          {isLoading ? <LoadingState message="Carregando resumo do monitoramento..." /> : null}
-
-          {/* ── Metric grid ──────────────────────────────── */}
-          <View style={[styles.metricsGrid, isDesktop && styles.metricsGridDesktop]}>
-            <MetricCard
-              label="Regiões monitoradas"
-              value={fmt(summary?.totalRegioes)}
-              supportingText="Áreas sob cobertura"
-              accentColor={colors.primary500}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-            <MetricCard
-              label="Estações ativas"
-              value={fmt(summary?.totalEstacoesAtivas)}
-              supportingText="Sensores em operação"
-              accentColor={colors.teal}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-            <MetricCard
-              label="Alertas ativos"
-              value={fmt(summary?.alertasAtivos)}
-              supportingText="Pendências de monitoramento"
-              accentColor={colors.warningOrange}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-            <MetricCard
-              label="Alertas críticos"
-              value={fmt(summary?.alertasCriticos)}
-              supportingText="Prioridade imediata"
-              accentColor={colors.criticalRed}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-            <MetricCard
-              label="Leituras válidas"
-              value={fmt(summary?.leiturasValidas)}
-              supportingText="Amostras aceitas"
-              accentColor={colors.deepGreen}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-            <MetricCard
-              label="Maior risco atual"
-              value={summary?.maiorRiscoAtual ?? '-'}
-              supportingText="Nível consolidado mais severo"
-              accentColor={riskColor(summary?.maiorRiscoAtual)}
-              style={[styles.metricItem, isDesktop && styles.metricItemDesktop]}
-            />
-          </View>
-
-          {/* ── Error banner (only when summary missing) ── */}
-          {errorMessage && !summary ? (
-            <ErrorState
-              message={errorMessage}
-              onRetry={loadDashboard}
-            />
+          {/* ── Error (only when summary absent) ────── */}
+          {error && !summary ? (
+            <ErrorState message={error} onRetry={load} />
           ) : null}
 
-          {/* ── Dashboard panels ─────────────────────────── */}
+          {/* ── Dashboard panels ────────────────────── */}
           {!isLoading ? (
             <View style={[styles.panels, isDesktop && styles.panelsDesktop]}>
 
+              {/* Panorama */}
               <AppCard
-                title="Panorama regional"
+                title="Panorama Regional"
                 subtitle="Distribuição por severidade e cobertura operacional."
                 variant="elevated"
-                style={[styles.panelItem, isDesktop && styles.panelItemDesktop]}>
-                <View style={styles.rows}>
-                  <Row label="Maior risco">
-                    {summary?.maiorRiscoAtual ? (
-                      <RiskBadge nivel={summary.maiorRiscoAtual} />
-                    ) : (
-                      <Text style={styles.rowVal}>—</Text>
-                    )}
-                  </Row>
-                  <Row label="Regiões em risco" value={fmt(summary?.regioesComRiscoAltoOuCritico)} />
-                  <Row label="Observações climáticas" value={fmt(summary?.observacoesClimaticas)} />
-                  <Row label="Avaliações de risco" value={fmt(summary?.avaliacoesRisco)} />
-                  <Row label="Clientes ativos" value={fmt(summary?.totalClientesAtivos)} />
+                style={[styles.panel, isDesktop && styles.panelHalf]}>
+                <View style={styles.table}>
+                  <TableRow label="Maior risco atual">
+                    {summary?.maiorRiscoAtual
+                      ? <RiskBadge nivel={summary.maiorRiscoAtual} />
+                      : <Text style={styles.dash}>—</Text>}
+                  </TableRow>
+                  <TableRow label="Regiões em risco alto/crítico" value={fmt(summary?.regioesComRiscoAltoOuCritico)} />
+                  <TableRow label="Observações climáticas"        value={fmt(summary?.observacoesClimaticas)} />
+                  <TableRow label="Avaliações de risco"           value={fmt(summary?.avaliacoesRisco)} />
+                  <TableRow label="Clientes ativos"               value={fmt(summary?.totalClientesAtivos)} />
                 </View>
               </AppCard>
 
+              {/* Alertas */}
               <AppCard
-                title="Alertas e resposta"
+                title="Alertas e Resposta"
                 subtitle="Priorização de ocorrências para equipes institucionais."
                 variant="elevated"
-                style={[styles.panelItem, isDesktop && styles.panelItemDesktop]}>
-                <View style={styles.rows}>
-                  <Row label="Ativos" value={fmt(summary?.alertasAtivos)} highlight />
-                  <Row label="Críticos" value={fmt(summary?.alertasCriticos)} danger />
-                  <Row label="Altos" value={fmt(summary?.alertasAltos)} highlight />
-                  <Row label="Resolvidos" value={fmt(summary?.alertasResolvidos)} />
+                style={[styles.panel, isDesktop && styles.panelHalf]}>
+                <View style={styles.table}>
+                  <TableRow label="Total ativos"  value={fmt(summary?.alertasAtivos)}   highlight />
+                  <TableRow label="Críticos"       value={fmt(summary?.alertasCriticos)} danger />
+                  <TableRow label="Altos"          value={fmt(summary?.alertasAltos)}    highlight />
+                  <TableRow label="Resolvidos"     value={fmt(summary?.alertasResolvidos)} />
                 </View>
               </AppCard>
 
+              {/* Ações rápidas */}
               <AppCard
-                title="Ações rápidas"
+                title="Ações Rápidas"
                 subtitle="Fluxos principais da operação."
                 variant="elevated"
-                style={[styles.panelItem, isDesktop && styles.panelItemDesktop]}>
+                style={[styles.panel, isDesktop && styles.panelHalf]}>
                 <View style={styles.actionGrid}>
-                  <ActionTile href="/regioes"           title="Regiões"     sub="Ver monitoramento" />
-                  <ActionTile href="/gerenciar-regioes" title="Gerenciar"   sub="CRUD de regiões" />
-                  <ActionTile href="/alertas"           title="Alertas"     sub="Resolver ocorrências" />
-                  <ActionTile href="/indicadores"       title="Indicadores" sub="Ver rankings" />
+                  <ActionTile href="/regioes"           title="Regiões"          sub="Monitoramento" />
+                  <ActionTile href="/gerenciar-regioes" title="Gerenciar Regiões" sub="CRUD operacional" />
+                  <ActionTile href="/alertas"           title="Alertas"          sub="Resolver ocorrências" />
+                  <ActionTile href="/indicadores"       title="Indicadores"      sub="Rankings e analytics" />
                 </View>
               </AppCard>
 
+              {/* Log */}
               <AppCard
-                title="Atividade recente"
-                subtitle="Sinais de acompanhamento para a operação."
+                title="Log Operacional"
+                subtitle="Atividade recente do sistema."
                 variant="elevated"
-                style={[styles.panelItem, isDesktop && styles.panelItemDesktop]}>
-                <View style={styles.activityList}>
-                  <ActivityRow
-                    title="Monitoramento ativo"
-                    detail="Indicadores consolidados para leitura rápida da operação."
-                  />
-                  <ActivityRow
-                    title="Prioridade operacional"
-                    detail="Alertas críticos e altos orientam a resposta das equipes."
-                  />
-                  <ActivityRow
-                    title="Base regional"
-                    detail="Regiões e estações mantêm a visão territorial do risco."
-                  />
+                style={[styles.panel, isDesktop && styles.panelHalf]}>
+                <View style={styles.logList}>
+                  <LogRow dot="#3F51B5" title="Monitoramento ativo"
+                    detail="Indicadores consolidados para leitura rápida da operação." />
+                  <LogRow dot="#EF6C00" title="Prioridade operacional"
+                    detail="Alertas críticos e altos orientam a resposta das equipes." />
+                  <LogRow dot="#2E7D32" title="Base regional"
+                    detail="Regiões e estações mantêm a visão territorial do risco." />
                 </View>
               </AppCard>
 
@@ -212,54 +199,37 @@ export default function HomeScreen() {
   );
 }
 
-/* ── Helpers ──────────────────────────────────────────────── */
+/* ── Helpers ──────────────────────────────────────────── */
 
-function fmt(value?: number): string {
-  return value === undefined || value === null ? '-' : String(value);
+function fmt(v?: number | null): string {
+  return v === undefined || v === null ? '—' : String(v);
 }
 
-function riskColor(nivel?: string): string {
-  if (nivel === 'CRITICO')  return colors.criticalRed;
-  if (nivel === 'ALTO')     return colors.highRisk;
-  if (nivel === 'MODERADO') return colors.warningOrange;
-  if (nivel === 'BAIXO')    return colors.deepGreen;
-  return colors.primary500;
+function riskAccent(nivel?: string): string {
+  if (nivel === 'CRITICO')  return '#D32F2F';
+  if (nivel === 'ALTO')     return '#EF6C00';
+  if (nivel === 'MODERADO') return '#F9A825';
+  return '#3F51B5';
 }
 
-function formatTimestamp(ts: string): string {
+function fmtTime(ts: string): string {
   try {
-    const d = new Date(ts);
-    return `Atualizado ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-  } catch {
-    return 'Atualizado';
-  }
+    return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch { return '—'; }
 }
 
-/* ── Sub-components ───────────────────────────────────────── */
+/* ── Sub-components ───────────────────────────────────── */
 
-function Row({
-  label,
-  value,
-  highlight = false,
-  danger = false,
-  children,
+function TableRow({
+  label, value, highlight, danger, children,
 }: {
-  label: string;
-  value?: string;
-  highlight?: boolean;
-  danger?: boolean;
-  children?: React.ReactNode;
+  label: string; value?: string; highlight?: boolean; danger?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <View style={rowStyles.row}>
-      <Text style={rowStyles.label}>{label}</Text>
+    <View style={tbl.row}>
+      <Text style={tbl.label}>{label}</Text>
       {children ?? (
-        <Text
-          style={[
-            rowStyles.value,
-            highlight && rowStyles.highlight,
-            danger && rowStyles.danger,
-          ]}>
+        <Text style={[tbl.value, highlight && tbl.hi, danger && tbl.err]}>
           {value ?? '—'}
         </Text>
       )}
@@ -267,20 +237,15 @@ function Row({
   );
 }
 
-const rowStyles = StyleSheet.create({
+const tbl = StyleSheet.create({
   row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.md,
-    justifyContent: 'space-between',
-    paddingVertical: 9,
+    alignItems: 'center', borderBottomColor: '#EEF0F4', borderBottomWidth: 1,
+    flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between', paddingVertical: 8,
   },
-  label: { color: colors.mutedText, fontSize: 13 },
-  value: { color: colors.neutralText, fontSize: 13, fontWeight: '700' },
-  highlight: { color: colors.warningOrange },
-  danger: { color: colors.criticalRed },
+  label: { color: colors.mutedText, flex: 1, fontSize: 13 },
+  value: { color: colors.neutralText, fontSize: 13, fontWeight: '600' },
+  hi: { color: '#EF6C00' },
+  err: { color: '#D32F2F' },
 });
 
 function ActionTile({ href, title, sub }: { href: Href; title: string; sub: string }) {
@@ -289,169 +254,98 @@ function ActionTile({ href, title, sub }: { href: Href; title: string; sub: stri
       <Pressable
         accessibilityRole="link"
         style={({ hovered, pressed }) => [
-          actionStyles.tile,
-          hovered  && actionStyles.hover,
-          pressed  && actionStyles.pressed,
+          act.tile,
+          hovered && act.hover,
+          pressed && act.pressed,
         ]}>
-        <Text style={actionStyles.title}>{title}</Text>
-        <Text style={actionStyles.sub}>{sub}</Text>
-        <Text style={actionStyles.arrow}>Abrir →</Text>
+        <Text style={act.title}>{title}</Text>
+        <Text style={act.sub}>{sub}</Text>
+        <Text style={act.arrow}>Ver →</Text>
       </Pressable>
     </Link>
   );
 }
 
-const actionStyles = StyleSheet.create({
+const act = StyleSheet.create({
   tile: {
-    backgroundColor: colors.primary50,
-    borderColor: colors.primary100,
+    backgroundColor: '#F4F5FF',
+    borderColor: '#C5CAE9',
     borderRadius: 6,
     borderWidth: 1,
-    boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
     flexBasis: '47%',
     flexGrow: 1,
-    gap: 3,
-    minWidth: 160,
-    padding: 14,
+    gap: 2,
+    minWidth: 140,
+    padding: 12,
   },
-  hover: {
-    backgroundColor: colors.primary100,
-    borderColor: colors.primary200,
-    boxShadow: '0px 2px 6px rgba(0,0,0,0.12)',
-  },
-  pressed: { opacity: 0.88, transform: [{ translateY: 1 }] },
-  title: { color: colors.neutralText, fontSize: 14, fontWeight: '700' },
-  sub: { color: colors.mutedText, fontSize: 12, marginTop: 1 },
-  arrow: { color: colors.primary600, fontSize: 12, fontWeight: '700', marginTop: 6 },
+  hover: { backgroundColor: '#E8EAF6', borderColor: '#9FA8DA',
+    boxShadow: '0 2px 6px rgba(63,81,181,0.15)' },
+  pressed: { opacity: 0.85, transform: [{ translateY: 1 }] },
+  title: { color: colors.neutralText, fontSize: 13, fontWeight: '700' },
+  sub: { color: colors.mutedText, fontSize: 11 },
+  arrow: { color: '#3F51B5', fontSize: 11, fontWeight: '700', marginTop: 6 },
 });
 
-function ActivityRow({ title, detail }: { title: string; detail: string }) {
+function LogRow({ dot, title, detail }: { dot: string; title: string; detail: string }) {
   return (
-    <View style={actStyles.item}>
-      <View style={actStyles.dot} />
-      <View style={actStyles.text}>
-        <Text style={actStyles.title}>{title}</Text>
-        <Text style={actStyles.detail}>{detail}</Text>
+    <View style={log.row}>
+      <View style={[log.dot, { backgroundColor: dot }]} />
+      <View style={log.text}>
+        <Text style={log.title}>{title}</Text>
+        <Text style={log.detail}>{detail}</Text>
       </View>
     </View>
   );
 }
 
-const actStyles = StyleSheet.create({
-  item: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.sm },
-  dot: {
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 99,
-    height: 7,
-    marginTop: 6,
-    width: 7,
-  },
-  text: { flex: 1, gap: 2 },
-  title: { color: colors.neutralText, fontSize: 13, fontWeight: '700' },
-  detail: { color: colors.mutedText, fontSize: 12, lineHeight: 17 },
+const log = StyleSheet.create({
+  row: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+  dot: { borderRadius: 99, height: 7, marginTop: 5, width: 7 },
+  text: { flex: 1 },
+  title: { color: colors.neutralText, fontSize: 13, fontWeight: '600' },
+  detail: { color: colors.mutedText, fontSize: 12, lineHeight: 17, marginTop: 1 },
 });
 
-/* ── Screen styles ────────────────────────────────────────── */
+/* ── Screen layout ────────────────────────────────────── */
 
 const styles = StyleSheet.create({
-  pageHeader: {
-    gap: spacing.sm,
-  },
-  pageHeaderDesktop: {
-    alignItems: 'flex-start',
+  pageHead: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
-  pageHeaderText: { flex: 1, gap: 3 },
-  pageTitle: {
-    color: colors.neutralText,
-    fontSize: 24,
+  eyebrow: {
+    color: colors.primary500,
+    fontSize: 10,
     fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  pageSubtitle: {
-    color: colors.mutedText,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  apiChip: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 6,
-    borderWidth: 1,
-    boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  chipDot: {
-    backgroundColor: '#22c55e',
+  title: { color: colors.neutralText, fontSize: 22, fontWeight: '700' },
+  subtitle: { color: colors.mutedText, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  updatedChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
     borderRadius: 99,
-    height: 8,
-    width: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  chipDotError: {
-    backgroundColor: colors.criticalRed,
-  },
-  chipLabel: {
-    color: colors.neutralText,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  chipMeta: {
-    color: colors.mutedText,
-    fontSize: 11,
-    marginTop: 1,
-  },
+  updatedText: { color: '#166534', fontSize: 11, fontWeight: '600' },
 
-  metricsGrid: {
-    gap: spacing.sm,
-  },
-  metricsGridDesktop: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  metricItem: {
-    flex: 1,
-  },
-  metricItemDesktop: {
-    flexBasis: '30%',
-    flexGrow: 1,
-    minWidth: 220,
-  },
+  metricsRow: { gap: spacing.sm },
+  metricsRowDesktop: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  metric: { flex: 1 },
+  metricDesktop: { flexBasis: '30%', flexGrow: 1, minWidth: 180 },
 
-  panels: {
-    gap: spacing.md,
-  },
-  panelsDesktop: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  panelItem: {
-    flex: 1,
-  },
-  panelItemDesktop: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 300,
-  },
-
-  rows: { gap: 0 },
-
-  rowVal: {
-    color: colors.mutedText,
-    fontSize: 13,
-  },
-
-  actionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-
-  activityList: { gap: spacing.sm },
+  panels: { gap: spacing.md },
+  panelsDesktop: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  panel: { flex: 1 },
+  panelHalf: { flexBasis: '48%', flexGrow: 1, minWidth: 280 },
+  table: {},
+  dash: { color: colors.mutedText, fontSize: 13 },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  logList: { gap: 12 },
 });
