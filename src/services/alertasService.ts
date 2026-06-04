@@ -4,7 +4,14 @@ import { RISCO_NIVEIS, RiscoNivel } from '@/types/risco';
 
 export async function getAlertas(): Promise<AlertaReadModel[]> {
   const response = await api.get<Alerta[] | unknown>('/api/alertas');
-  return ensureArray<Alerta>(response.data).map(normalizeAlerta);
+  const alertas = ensureArray<Alerta>(response.data).map(normalizeAlerta);
+
+  if (__DEV__) {
+    console.log('[AlertasService] raw response.data', response.data);
+    console.log('[AlertasService] normalized alertas', alertas);
+  }
+
+  return alertas;
 }
 
 export async function listarAlertas(): Promise<AlertaReadModel[]> {
@@ -39,14 +46,16 @@ function normalizeAlerta(raw: Alerta): AlertaReadModel {
 }
 
 function ensureArray<T>(value: unknown): T[] {
-  if (Array.isArray(value)) {
-    return value as T[];
+  const parsed = parseJsonIfNeeded(value);
+
+  if (Array.isArray(parsed)) {
+    return parsed as T[];
   }
 
-  if (value && typeof value === 'object') {
-    const content = (value as { content?: unknown; data?: unknown; items?: unknown }).content;
-    const data = (value as { data?: unknown }).data;
-    const items = (value as { items?: unknown }).items;
+  if (parsed && typeof parsed === 'object') {
+    const content = (parsed as { content?: unknown; data?: unknown; items?: unknown }).content;
+    const data = (parsed as { data?: unknown }).data;
+    const items = (parsed as { items?: unknown }).items;
 
     if (Array.isArray(content)) {
       return content as T[];
@@ -62,6 +71,18 @@ function ensureArray<T>(value: unknown): T[] {
   }
 
   return [];
+}
+
+function parseJsonIfNeeded(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 function pickValue(source: Record<string, unknown>, keys: string[]): number | string | undefined {

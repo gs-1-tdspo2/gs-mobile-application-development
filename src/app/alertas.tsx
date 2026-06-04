@@ -42,6 +42,7 @@ export default function AlertasScreen() {
   const [resolvingId, setResolvingId] = useState<number | string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [hasLoadedAlertas, setHasLoadedAlertas] = useState(false);
   const { isDesktop } = useResponsiveLayout();
 
   const loadAlertas = useCallback(async () => {
@@ -51,8 +52,10 @@ export default function AlertasScreen() {
     try {
       const data = await getAlertas();
       setAlertas(data);
+      setHasLoadedAlertas(true);
     } catch (error) {
       setAlertas([]);
+      setHasLoadedAlertas(false);
       setErrorMessage(`Não foi possível carregar os alertas. ${getApiErrorMessage(error)}`);
     } finally {
       setIsLoading(false);
@@ -68,8 +71,12 @@ export default function AlertasScreen() {
     const criticos = alertas.filter((alerta) => alerta.nivel === 'CRITICO').length;
     const resolvidos = alertas.filter((alerta) => alerta.resolvido).length;
 
+    if (!hasLoadedAlertas) {
+      return { total: '-', ativos: '-', criticos: '-', resolvidos: '-' };
+    }
+
     return { total: alertas.length, ativos, criticos, resolvidos };
-  }, [alertas]);
+  }, [alertas, hasLoadedAlertas]);
 
   const filteredAlertas = useMemo(() => {
     return alertas.filter((alerta) => {
