@@ -1,12 +1,12 @@
-import { api } from '@/services/api';
+import { api, webGet } from '@/services/api';
 import { Regiao, RegiaoCreateRequest, RegiaoReadModel, RegiaoUpdateRequest } from '@/types/regiao';
 import { Estacao, EstacaoReadModel } from '@/types/estacao';
 import { Leitura, LeituraReadModel } from '@/types/leitura';
 import { RISCO_NIVEIS, RiscoAtual, RiscoAtualReadModel, RiscoNivel } from '@/types/risco';
 
 export async function getRegioes(): Promise<RegiaoReadModel[]> {
-  const response = await api.get<Regiao[]>('/api/regioes');
-  return ensureArray<Regiao>(response.data).map(normalizeRegiao);
+  const data = await webGet<Regiao[]>('/api/regioes');
+  return ensureArray<Regiao>(data).map(normalizeRegiao);
 }
 
 export async function listarRegioes(): Promise<RegiaoReadModel[]> {
@@ -14,8 +14,8 @@ export async function listarRegioes(): Promise<RegiaoReadModel[]> {
 }
 
 export async function getRegiaoById(id: number | string): Promise<RegiaoReadModel> {
-  const response = await api.get<Regiao>(`/api/regioes/${id}`);
-  return normalizeRegiao(response.data);
+  const data = await webGet<Regiao>(`/api/regioes/${id}`);
+  return normalizeRegiao(data);
 }
 
 export async function buscarRegiaoPorId(id: number | string): Promise<RegiaoReadModel> {
@@ -42,18 +42,18 @@ export async function deleteRegiao(id: number | string): Promise<void> {
 export async function getRiscoAtualByRegiao(
   idRegiao: number | string,
 ): Promise<RiscoAtualReadModel | null> {
-  const response = await api.get<RiscoAtual | null>(`/api/regioes/${idRegiao}/risco-atual`);
-  return response.data ? normalizeRiscoAtual(response.data) : null;
+  const data = await webGet<RiscoAtual | null>(`/api/regioes/${idRegiao}/risco-atual`);
+  return data ? normalizeRiscoAtual(data) : null;
 }
 
 export async function getEstacoesByRegiao(idRegiao: number | string): Promise<EstacaoReadModel[]> {
-  const response = await api.get<Estacao[] | unknown>(`/api/estacoes/regiao/${idRegiao}`);
-  return ensureArray<Estacao>(response.data).map(normalizeEstacao);
+  const data = await webGet<Estacao[] | unknown>(`/api/estacoes/regiao/${idRegiao}`);
+  return ensureArray<Estacao>(data).map(normalizeEstacao);
 }
 
 export async function getLeiturasByRegiao(idRegiao: number | string): Promise<LeituraReadModel[]> {
-  const response = await api.get<Leitura[] | unknown>(`/api/regioes/${idRegiao}/leituras`);
-  return ensureArray<Leitura>(response.data).map(normalizeLeitura);
+  const data = await webGet<Leitura[] | unknown>(`/api/regioes/${idRegiao}/leituras`);
+  return ensureArray<Leitura>(data).map(normalizeLeitura);
 }
 
 function normalizeRegiao(raw: Regiao): RegiaoReadModel {
