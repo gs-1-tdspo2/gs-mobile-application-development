@@ -3,13 +3,11 @@ import { Platform } from 'react-native';
 
 import { API_BASE_URL } from '@/constants/api';
 
+// No global default headers — avoids sending Content-Type/Accept on every
+// request, which can trigger CORS preflights on cross-origin GETs.
 export const api = create({
   baseURL: API_BASE_URL,
   timeout: 60000,
-  headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  },
 });
 
 if (__DEV__) {
@@ -41,29 +39,30 @@ function buildAbsoluteUrl(path: string): string {
 }
 
 /**
- * Perform a GET request.
+ * GET helper.
  *
- * On web, uses native fetch directly — avoids Axios XHR timeout issues and
- * the CORS-preflight triggered by Axios's Content-Type header on GET requests.
+ * On web: uses bare fetch(url) — no options, no headers — matching exactly
+ * what a manual browser fetch() call does. Avoids CORS preflights.
  *
- * On native, uses Axios as normal.
+ * On native (iOS/Android): uses Axios.
  */
 export async function webGet<T>(path: string): Promise<T> {
   if (Platform.OS === 'web') {
     const url = buildAbsoluteUrl(path);
-    if (__DEV__) console.log(`[Amanaje API] GET (fetch) ${url}`);
-    // Do NOT send Content-Type on GET — it triggers a CORS preflight.
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} — ${path}`);
+    if (__DEV__) console.log(`[Amanaje API] GET (fetch-minimal) ${url}`);
+    try {
+      const res = await fetch(url);
+      if (__DEV__) console.log(`[Amanaje API] OK ${res.status} ${url}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<T>;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (__DEV__) console.error(`[Amanaje API] FETCH FAILED ${url} ${msg}`);
+      throw err;
     }
-    return res.json() as Promise<T>;
   }
 
-  // Native (iOS / Android): use Axios
+  // Native: Axios
   const response = await api.get<T>(path);
   return response.data;
 }
