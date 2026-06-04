@@ -44,7 +44,7 @@ export default function RegioesScreen() {
       setRegioes(data);
     } catch (error) {
       setRegioes([]);
-      setErrorMessage(getApiErrorMessage(error));
+      setErrorMessage(`Não foi possível carregar as regiões. ${getApiErrorMessage(error)}`);
     } finally {
       setIsLoading(false);
     }

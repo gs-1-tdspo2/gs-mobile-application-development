@@ -32,7 +32,7 @@ export default function HomeScreen() {
       setSummary(data);
     } catch (error) {
       setSummary(null);
-      setErrorMessage(getApiErrorMessage(error));
+      setErrorMessage(`Não foi possível carregar o resumo do dashboard. ${getApiErrorMessage(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +57,7 @@ export default function HomeScreen() {
                 <Text style={styles.title}>Dashboard Operacional</Text>
                 <Text style={styles.description}>
                   Visão executiva para acompanhar regiões vulneráveis, risco ambiental e alertas
-                  prioritários consumidos pela API Java.
+                  prioritários em uma operação ambiental integrada.
                 </Text>
               </View>
               <View style={styles.apiChip}>
@@ -88,7 +88,7 @@ export default function HomeScreen() {
             />
             <MetricCard
               label="Estações ativas"
-              value={formatMetric(getRawNumber(summary, ['estacoesAtivas', 'totalEstacoesAtivas']))}
+              value={formatMetric(summary?.totalEstacoesAtivas)}
               supportingText="Sensores em operação"
               accentColor={colors.primaryAccent}
               style={isDesktop && styles.metricDesktopItem}
@@ -109,7 +109,7 @@ export default function HomeScreen() {
             />
             <MetricCard
               label="Leituras válidas"
-              value={formatMetric(getRawNumber(summary, ['leiturasValidas', 'totalLeiturasValidas']))}
+              value={formatMetric(summary?.leiturasValidas)}
               supportingText="Amostras aceitas"
               accentColor={colors.deepGreen}
               style={isDesktop && styles.metricDesktopItem}
@@ -133,7 +133,15 @@ export default function HomeScreen() {
               style={isDesktop && styles.dashboardPanel}>
               <View style={styles.panelRows}>
                 <PanelRow label="Maior risco" value={summary?.maiorRiscoAtual ?? 'Indisponível'} />
-                <PanelRow label="Regiões em risco crítico" value={formatMetric(getRawNumber(summary, ['regioesEmRiscoCritico']))} />
+                <PanelRow
+                  label="Regiões em risco"
+                  value={formatMetric(summary?.regioesComRiscoAltoOuCritico)}
+                />
+                <PanelRow
+                  label="Observações climáticas"
+                  value={formatMetric(summary?.observacoesClimaticas)}
+                />
+                <PanelRow label="Avaliações de risco" value={formatMetric(summary?.avaliacoesRisco)} />
                 <PanelRow label="Atualização" value={summary?.atualizadoEm ?? 'Aguardando API'} />
               </View>
             </AppCard>
@@ -146,7 +154,8 @@ export default function HomeScreen() {
               <View style={styles.panelRows}>
                 <PanelRow label="Alertas ativos" value={formatMetric(summary?.alertasAtivos)} highlight />
                 <PanelRow label="Críticos" value={formatMetric(summary?.alertasCriticos)} danger />
-                <PanelRow label="Resolvidos" value={formatMetric(getRawNumber(summary, ['totalAlertasResolvidos', 'alertasResolvidos']))} />
+                <PanelRow label="Altos" value={formatMetric(summary?.alertasAltos)} highlight />
+                <PanelRow label="Resolvidos" value={formatMetric(summary?.alertasResolvidos)} />
               </View>
             </AppCard>
 
@@ -169,9 +178,9 @@ export default function HomeScreen() {
               variant="elevated"
               style={isDesktop && styles.dashboardPanel}>
               <View style={styles.activityList}>
-                <ActivityItem title="Monitoramento ativo" detail="Resumo, regiões e alertas usam dados da API." />
-                <ActivityItem title="Render" detail="Primeira resposta pode levar alguns segundos." />
-                <ActivityItem title="MVP escolar" detail="Sem autenticação, mapas ou bibliotecas pesadas." />
+                <ActivityItem title="Monitoramento ativo" detail="Indicadores consolidados para leitura rápida da operação." />
+                <ActivityItem title="Prioridade operacional" detail="Alertas críticos e altos orientam a resposta das equipes." />
+                <ActivityItem title="Base regional" detail="Regiões e estações mantêm a visão territorial do risco." />
               </View>
             </AppCard>
           </View>
@@ -183,21 +192,6 @@ export default function HomeScreen() {
 
 function formatMetric(value?: number): string {
   return value === undefined ? '-' : String(value);
-}
-
-function getRawNumber(summary: DashboardSummary | null, keys: string[]): number | undefined {
-  if (!summary?.raw) {
-    return undefined;
-  }
-
-  for (const key of keys) {
-    const value = summary.raw[key];
-    if (typeof value === 'number') {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 function PanelRow({

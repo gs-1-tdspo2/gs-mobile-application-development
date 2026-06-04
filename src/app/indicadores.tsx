@@ -33,7 +33,7 @@ const distribuicaoDemo = [
 const historicoDemo = [
   'Risco hídrico revisado nas regiões ribeirinhas.',
   'Alertas críticos priorizados para Defesa Civil.',
-  'Indicadores preparados para integração com /api/indicadores-regionais.',
+  'Tendências regionais consolidadas para análise institucional.',
 ];
 
 export default function IndicadoresScreen() {
@@ -70,7 +70,7 @@ export default function IndicadoresScreen() {
         <View style={[styles.contentColumns, isDesktop && styles.desktopColumns]}>
           <AppCard
             title="Ranking de atenção"
-            subtitle="Barras simples mantêm a tela leve, sem dependência de gráficos."
+            subtitle="Priorização regional para apoiar leitura executiva do risco."
             style={isDesktop && styles.rankingCard}>
             <View style={styles.ranking}>
               {rankingDemo.map((item) => (
@@ -89,7 +89,7 @@ export default function IndicadoresScreen() {
 
           <AnalyticsPanel
             title="Distribuição de risco"
-            subtitle="Composição visual simples para leitura executiva, sem biblioteca gráfica."
+            subtitle="Composição dos níveis de risco no cenário monitorado."
             style={isDesktop && styles.analyticsCard}>
             <View style={styles.analyticsContent}>
               {distribuicaoDemo.map((item) => (
@@ -114,7 +114,7 @@ export default function IndicadoresScreen() {
 
         <AppCard
           title="Histórico operacional"
-          subtitle="Eventos recentes para orientar a apresentação do painel."
+          subtitle="Eventos recentes para contextualizar a operação ambiental."
           variant="elevated">
           <View style={styles.historyList}>
             {historicoDemo.map((item) => (
@@ -126,7 +126,7 @@ export default function IndicadoresScreen() {
           </View>
         </AppCard>
 
-        <AppCard title="Status da integração" subtitle="Tela pronta para evoluir com dados reais." variant="compact">
+        <AppCard title="Status do painel" subtitle="Indicadores em acompanhamento contínuo." variant="compact">
           <StatusBadge status="Em desenvolvimento" />
         </AppCard>
         </ScrollView>

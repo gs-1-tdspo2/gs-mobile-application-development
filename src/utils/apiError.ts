@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     if (error.code === 'ECONNABORTED') {
-      return 'Não foi possível carregar os dados agora. A API pode estar iniciando; tente novamente em alguns segundos.';
+      return 'A API demorou para responder. Aguarde alguns segundos e tente novamente.';
     }
 
     if (!error.response) {
@@ -15,7 +15,7 @@ export function getApiErrorMessage(error: unknown): string {
     }
 
     if (error.response.status >= 500) {
-      return 'A API encontrou um erro interno. Aguarde alguns segundos e tente novamente.';
+      return 'A API encontrou uma instabilidade neste recurso. Aguarde alguns segundos e tente novamente.';
     }
 
     const message = getMessageFromResponse(error.response?.data);

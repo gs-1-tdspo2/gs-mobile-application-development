@@ -18,17 +18,32 @@ export async function verificarSaudeApi(): Promise<unknown> {
 
 function normalizeDashboardSummary(raw: DashboardSummaryRaw): DashboardSummary {
   return {
+    totalClientesAtivos: pickNumber(raw, ['totalClientesAtivos', 'clientesAtivos']),
     totalRegioes: pickNumber(raw, [
       'totalRegioes',
       'totalRegioesAtivas',
       'totalRegions',
       'regioesMonitoradas',
     ]),
+    totalEstacoesAtivas: pickNumber(raw, ['totalEstacoesAtivas', 'estacoesAtivas']),
     alertasAtivos: pickNumber(raw, ['alertasAtivos', 'totalAlertasAtivos', 'activeAlerts']),
     alertasCriticos: pickNumber(raw, [
       'alertasCriticos',
       'totalAlertasCriticos',
       'criticalAlerts',
+      'regioesEmRiscoCritico',
+    ]),
+    alertasAltos: pickNumber(raw, ['totalAlertasAltos', 'alertasAltos']),
+    alertasResolvidos: pickNumber(raw, ['totalAlertasResolvidos', 'alertasResolvidos']),
+    leiturasValidas: pickNumber(raw, ['totalLeiturasValidas', 'leiturasValidas']),
+    observacoesClimaticas: pickNumber(raw, [
+      'totalObservacoesClimaticas',
+      'observacoesClimaticas',
+    ]),
+    avaliacoesRisco: pickNumber(raw, ['totalAvaliacoesRisco', 'avaliacoesRisco']),
+    regioesComRiscoAltoOuCritico: pickNumber(raw, [
+      'regioesComRiscoAltoOuCritico',
+      'regioesEmRisco',
       'regioesEmRiscoCritico',
     ]),
     maiorRiscoAtual: pickRisk(raw, [

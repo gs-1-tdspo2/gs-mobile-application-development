@@ -53,7 +53,7 @@ export default function AlertasScreen() {
       setAlertas(data);
     } catch (error) {
       setAlertas([]);
-      setErrorMessage(getApiErrorMessage(error));
+      setErrorMessage(`Não foi possível carregar os alertas. ${getApiErrorMessage(error)}`);
     } finally {
       setIsLoading(false);
     }
