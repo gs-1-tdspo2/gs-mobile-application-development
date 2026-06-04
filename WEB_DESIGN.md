@@ -52,13 +52,25 @@ Desktop web uses a persistent sidebar:
 | Indicadores | `/indicadores` |
 
 Sidebar styling:
-- Width: about `272px`.
+- Width: about `292px`.
 - Background: `#263B80`.
-- Active item: `#3448A8`.
+- Active item: `#5A6FD6`.
 - Border/accent: `#5A6FD6`.
 - Text: off-white and pale indigo.
+- Hover state: subtly brighten item background inside the same indigo palette.
+- Active routes include a compact marker, label, and supporting subtitle.
 
 Mobile must not show the sidebar.
+
+## 4.1 Interaction Polish
+
+Desktop web controls should feel like real admin controls:
+
+- Buttons use hover, pressed, disabled, and danger hover states.
+- Filter chips brighten on hover and use a solid primary active state.
+- Clickable dashboard/region cards lift subtly on hover.
+- Sidebar items show hover and pressed feedback.
+- Error panels stay compact, with a red accent instead of a dominant full-page warning block.
 
 ## 5. Palette Harmonization
 
@@ -88,10 +100,11 @@ Risk colors remain semantic:
 
 Desktop should show:
 - Sidebar navigation.
-- Large indigo hero/header.
-- Four summary metrics in one row when space allows.
-- Quick action cards in a two-column grid.
-- A compact indigo operations panel for demo/API status.
+- Large indigo operational header.
+- Compact API Render status chip inside the header, with no environment variable text.
+- Six summary metrics in responsive rows when space allows.
+- Dashboard panels for regional risk, alert/status overview, quick actions, and recent activity.
+- No debug-looking "connected operation" blocks.
 
 ### Regioes
 
@@ -156,4 +169,3 @@ Vercel should use:
 - Build command: `npx expo export -p web`
 - Output directory: `dist`
 - Environment variable: `EXPO_PUBLIC_API_BASE_URL=https://gs-java-advanced.onrender.com`
-
