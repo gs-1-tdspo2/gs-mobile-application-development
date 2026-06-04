@@ -93,7 +93,7 @@ export default function RegiaoDetalheScreen() {
     setIsLoading(false);
   }, [id]);
 
-  useEffect(() => { void Promise.resolve().then(loadDetails); }, [loadDetails]);
+  useEffect(() => { void loadDetails(); }, [loadDetails]);
 
   return (
     <AppShell activeRoute="regioes">

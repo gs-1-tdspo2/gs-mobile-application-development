@@ -11,14 +11,14 @@ type AppShellProps = PropsWithChildren<{
   activeRoute: AppRoute;
 }>;
 
-type NavItem = { key: AppRoute; label: string; href: Href; symbol: string };
+type NavItem = { key: AppRoute; label: string; href: Href; icon: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard',   label: 'Dashboard',         href: '/',                  symbol: '⊞' },
-  { key: 'regioes',     label: 'Regiões',            href: '/regioes',           symbol: '◎' },
-  { key: 'gerenciar',   label: 'Gerenciar Regiões',  href: '/gerenciar-regioes', symbol: '⊕' },
-  { key: 'alertas',     label: 'Alertas',            href: '/alertas',           symbol: '△' },
-  { key: 'indicadores', label: 'Indicadores',        href: '/indicadores',       symbol: '≡' },
+  { key: 'dashboard',   label: 'Dashboard',         href: '/',                  icon: '▪' },
+  { key: 'regioes',     label: 'Regiões',            href: '/regioes',           icon: '▪' },
+  { key: 'gerenciar',   label: 'Gerenciar Regiões',  href: '/gerenciar-regioes', icon: '▪' },
+  { key: 'alertas',     label: 'Alertas',            href: '/alertas',           icon: '▪' },
+  { key: 'indicadores', label: 'Indicadores',        href: '/indicadores',       icon: '▪' },
 ];
 
 const PAGE_TITLE: Record<AppRoute, string> = {
@@ -42,11 +42,8 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
       {/* ── Sidebar ─────────────────────────────────── */}
       <View style={styles.sidebar}>
 
-        {/* Brand — Amanajé only, no subtitle */}
+        {/* Brand — text only, no icon block */}
         <View style={styles.brand}>
-          <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>A</Text>
-          </View>
           <Text style={styles.brandName}>Amanajé</Text>
         </View>
 
@@ -61,27 +58,29 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
             const active = item.key === activeRoute;
             return (
               <Link key={item.key} href={item.href} asChild>
+                {/*
+                  No accessibilityRole="link" here — that would make RN Web
+                  render this as an <a> with display:inline, breaking flex layout.
+                  The outer <Link> already provides the anchor for web.
+                */}
                 <Pressable
-                  accessibilityRole="link"
                   style={({ hovered, pressed }) => [
                     styles.navItem,
                     active   && styles.navItemActive,
                     hovered && !active && styles.navItemHover,
                     pressed  && styles.navItemPressed,
                   ]}>
-                  {/* Left accent strip for active item */}
                   {active && <View style={styles.activeBar} />}
 
-                  {/* Icon box — flexShrink: 0 prevents it from collapsing */}
-                  <View style={[styles.navIcon, active && styles.navIconActive]}>
-                    <Text style={[styles.navIconText, active && styles.navIconTextActive]}>
-                      {item.symbol}
-                    </Text>
+                  {/* Icon dot — fixed width, no shrink */}
+                  <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                    <View style={[styles.iconDot, active && styles.iconDotActive]} />
                   </View>
 
-                  {/* Label — numberOfLines prevents wrap-under-icon */}
+                  {/* Label — flex:1 + minWidth:0 prevents wrapping under icon */}
                   <Text
                     numberOfLines={1}
+                    ellipsizeMode="tail"
                     style={[styles.navLabel, active && styles.navLabelActive]}>
                     {item.label}
                   </Text>
@@ -112,9 +111,6 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
               <View style={styles.statusChipDot} />
               <Text style={styles.statusChipText}>Render conectado</Text>
             </View>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AE</Text>
-            </View>
           </View>
         </View>
 
@@ -128,7 +124,7 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
   );
 }
 
-const SIDEBAR_BG = '#283A9B';
+const SIDEBAR_BG = '#2B3A9F';
 
 const styles = StyleSheet.create({
   shell: {
@@ -150,39 +146,24 @@ const styles = StyleSheet.create({
     width: 220,
   },
 
-  /* Brand: icon + name only, no subtitle */
+  /* Brand: name only */
   brand: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    height: 60,
-    paddingHorizontal: 16,
-  },
-  brandIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 8,
-    flexShrink: 0,
-    height: 34,
+    height: 56,
     justifyContent: 'center',
-    width: 34,
-  },
-  brandIconText: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '800',
+    paddingHorizontal: 18,
   },
   brandName: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
 
   divider: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     height: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
+    marginHorizontal: 0,
+    marginBottom: 6,
   },
 
   /* Nav scroll area */
@@ -190,73 +171,81 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   navContent: {
-    gap: 2,
+    gap: 1,
     paddingBottom: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
+    paddingTop: 4,
   },
 
-  /* Nav row: strictly horizontal, icon left, label right */
+  /*
+   * Nav row: MUST be horizontal.
+   * display:'flex' overrides any browser <a> inline default.
+   * width:'100%' fills the sidebar column.
+   * overflow:'hidden' clips long labels.
+   */
   navItem: {
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 5,
+    display: 'flex',
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 10,
-    height: 44,
+    height: 40,
     overflow: 'hidden',
-    paddingLeft: 8,
-    paddingRight: 12,
+    paddingHorizontal: 10,
     position: 'relative',
     width: '100%',
   },
   navItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.20)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   navItemHover: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   navItemPressed: {
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.26)',
   },
 
+  /* Left accent strip on active row */
   activeBar: {
     backgroundColor: '#ffffff',
+    borderBottomRightRadius: 2,
+    borderTopRightRadius: 2,
     bottom: 6,
-    borderRadius: 2,
     left: 0,
     position: 'absolute',
     top: 6,
     width: 3,
   },
 
-  navIcon: {
+  /* Fixed-size icon area — prevents any collapse */
+  iconWrap: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderRadius: 5,
     flexShrink: 0,
-    height: 28,
+    height: 20,
     justifyContent: 'center',
-    width: 28,
+    marginRight: 10,
+    width: 16,
   },
-  navIconActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+  iconWrapActive: {},
+  iconDot: {
+    backgroundColor: 'rgba(255,255,255,0.40)',
+    borderRadius: 99,
+    height: 6,
+    width: 6,
   },
-  navIconText: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 13,
-    lineHeight: 14,
-  },
-  navIconTextActive: {
-    color: '#ffffff',
+  iconDotActive: {
+    backgroundColor: '#ffffff',
+    height: 8,
+    width: 8,
   },
 
-  /* Label: flex 1 so it fills row, numberOfLines=1 prevents wrap */
+  /* Label — flex:1 + minWidth:0 ensures it fills without wrapping */
   navLabel: {
-    color: 'rgba(255,255,255,0.78)',
+    color: 'rgba(255,255,255,0.72)',
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 18,
+    minWidth: 0,
   },
   navLabelActive: {
     color: '#ffffff',
@@ -265,7 +254,7 @@ const styles = StyleSheet.create({
 
   /* Footer */
   sidebarFooter: {
-    borderTopColor: 'rgba(255,255,255,0.10)',
+    borderTopColor: 'rgba(255,255,255,0.12)',
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -282,7 +271,7 @@ const styles = StyleSheet.create({
     width: 6,
   },
   statusText: {
-    color: 'rgba(255,255,255,0.45)',
+    color: 'rgba(255,255,255,0.40)',
     fontSize: 11,
   },
 
@@ -340,19 +329,6 @@ const styles = StyleSheet.create({
     color: '#166534',
     fontSize: 11,
     fontWeight: '600',
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: SIDEBAR_BG,
-    borderRadius: 99,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  avatarText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '700',
   },
 
   contentArea: {

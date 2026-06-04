@@ -80,7 +80,7 @@ export default function GerenciarRegioesScreen() {
     }
   }, []);
 
-  useEffect(() => { void Promise.resolve().then(() => loadRegioes()); }, [loadRegioes]);
+  useEffect(() => { void loadRegioes(); }, [loadRegioes]);
 
   function openCreate() {
     setEditing(null);

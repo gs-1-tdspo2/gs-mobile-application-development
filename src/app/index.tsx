@@ -37,7 +37,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <AppShell activeRoute="dashboard">

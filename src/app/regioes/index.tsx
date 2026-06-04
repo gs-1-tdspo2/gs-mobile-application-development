@@ -47,7 +47,7 @@ export default function RegioesScreen() {
     }
   }, []);
 
-  useEffect(() => { void Promise.resolve().then(loadRegioes); }, [loadRegioes]);
+  useEffect(() => { void loadRegioes(); }, [loadRegioes]);
 
   const filtered = useMemo(() => {
     return regioes.filter((r) => {

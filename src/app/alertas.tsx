@@ -53,7 +53,7 @@ export default function AlertasScreen() {
     }
   }, []);
 
-  useEffect(() => { void Promise.resolve().then(loadAlertas); }, [loadAlertas]);
+  useEffect(() => { void loadAlertas(); }, [loadAlertas]);
 
   const summary = useMemo(() => {
     if (!loaded) return { total: '—', ativos: '—', criticos: '—', resolvidos: '—' };
