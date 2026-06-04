@@ -1,4 +1,4 @@
-import { Href, Link } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 import { PropsWithChildren } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppShell({ activeRoute, children }: AppShellProps) {
   const { isDesktop } = useResponsiveLayout();
+  const router = useRouter();
 
   if (!isDesktop) {
     return <>{children}</>;
@@ -38,13 +39,14 @@ export function AppShell({ activeRoute, children }: AppShellProps) {
           {NAV_ITEMS.map((item) => {
             const active = item.key === activeRoute;
             return (
-              <Link key={item.key} href={item.href} asChild>
-                <Pressable style={[styles.navItem, active && styles.navItemActive]}>
-                  <Text style={[styles.navLabel, active && styles.navLabelActive]}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              </Link>
+              <Pressable
+                key={item.key}
+                onPress={() => router.push(item.href)}
+                style={[styles.navItem, active && styles.navItemActive]}>
+                <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+                  {item.label}
+                </Text>
+              </Pressable>
             );
           })}
         </ScrollView>
