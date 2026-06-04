@@ -1,9 +1,6 @@
 import { PropsWithChildren } from 'react';
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/spacing';
-
 type AnalyticsPanelProps = PropsWithChildren<{
   title: string;
   subtitle?: string;
@@ -22,27 +19,24 @@ export function AnalyticsPanel({ title, subtitle, children, style }: AnalyticsPa
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: colors.analyticsPanel,
-    borderColor: colors.analyticsBorder,
-    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    borderColor: '#e0e0e0',
     borderWidth: 1,
-    boxShadow:
-      '0px 3px 1px -2px rgba(0,0,0,.2), 0px 2px 2px 0px rgba(0,0,0,.14), 0px 1px 5px 0px rgba(0,0,0,.12)',
-    elevation: 2,
-    padding: 18,
+    borderRadius: 4,
+    padding: 16,
   },
   title: {
-    color: colors.offWhite,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
   },
   subtitle: {
-    color: colors.analyticsSurface,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: spacing.xs,
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 8,
   },
   content: {
-    marginTop: spacing.md,
+    marginTop: 8,
   },
 });
