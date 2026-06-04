@@ -30,6 +30,7 @@ export default function HomeScreen() {
     try {
       const data = await getDashboardSummary();
       setSummary(data);
+      setErrorMessage(null);
     } catch (error) {
       setSummary(null);
       setErrorMessage(`Não foi possível carregar o resumo do dashboard. ${getApiErrorMessage(error)}`);
@@ -125,7 +126,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          {errorMessage ? <ErrorState message={errorMessage} onRetry={loadDashboard} /> : null}
+          {errorMessage && !summary ? <ErrorState message={errorMessage} onRetry={loadDashboard} /> : null}
 
           <View style={[styles.dashboardGrid, isDesktop && styles.desktopGrid]}>
             <AppCard
