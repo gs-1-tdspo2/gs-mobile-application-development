@@ -41,7 +41,7 @@ Use React Native primitives, `useWindowDimensions`, and Expo Router. Do not intr
 
 ## 4. Desktop Navigation
 
-Desktop web uses a persistent sidebar:
+Desktop web uses a persistent Material-style sidebar/drawer:
 
 | Item | Route |
 | --- | --- |
@@ -52,12 +52,13 @@ Desktop web uses a persistent sidebar:
 | Indicadores | `/indicadores` |
 
 Sidebar styling:
-- Width: about `292px`.
-- Background: `#263B80`.
-- Active item: `#5A6FD6`.
-- Border/accent: `#5A6FD6`.
+- Width: about `260px`.
+- Background: `#303F9F`.
+- Active item: `rgba(255,255,255,0.14)` with a left accent strip.
+- Hover item: `rgba(255,255,255,0.08)`.
+- Border/accent: `#7986CB` and orange active strip accents.
 - Text: off-white and pale indigo.
-- Hover state: subtly brighten item background inside the same indigo palette.
+- Rows are compact, around `42px` high, with `16px`-style horizontal density.
 - Active routes include a compact marker, label, and supporting subtitle.
 
 Mobile must not show the sidebar.
@@ -72,20 +73,34 @@ Desktop web controls should feel like real admin controls:
 - Sidebar items show hover and pressed feedback.
 - Error panels stay compact, with a red accent instead of a dominant full-page warning block.
 
+## 4.2 Material Dashboard Visual Pass
+
+The web interface translates the extracted ThingsBoard/Material CSS references into React Native Web style objects. Do not paste Angular Material or ThingsBoard CSS into this project.
+
+Applied visual rules:
+
+- App workspace background: `#EEEEEE`.
+- Primary indigo scale follows Material indigo anchors:
+  - `#E8EAF6`, `#C5CAE9`, `#9FA8DA`, `#7986CB`, `#5C6BC0`, `#3F51B5`, `#3949AB`, `#303F9F`, `#2D3C78`, `#1A237E`.
+- Cards use white surfaces, `4px`-`6px` radius, subtle borders, and Material-like elevation shadows.
+- Buttons use Material-like heights around `40px`, `4px` radius, variant-aware hover and pressed states.
+- Filter chips use `32px` height, `16px` radius, light indigo selected state, and hover feedback.
+- Error cards are compact white panels with a red left accent.
+
 ## 5. Palette Harmonization
 
 Dark dashboard panels must stay in the indigo/navy family. Avoid charcoal, black, or gray-black analytics panels.
 
 | Token | Hex | Usage |
 | --- | --- | --- |
-| `navDark` | `#263B80` | Sidebar and darkest dashboard panels |
-| `navPanel` | `#2E3F8F` | Secondary dark panels |
-| `navActive` | `#3448A8` | Active navigation and selected dark surfaces |
+| `navDark` | `#303F9F` | Sidebar and darkest dashboard panels |
+| `navPanel` | `#3949AB` | Secondary dark panels |
+| `navActive` | `#5C6BC0` | Active navigation markers and selected dark surfaces |
 | `primary` | `#3F51B5` | Primary actions and metric accents |
-| `primaryLight` | `#EEF2FF` | Light selected backgrounds |
-| `analyticsSurface` | `#E0E7FF` | Text on dark indigo panels |
-| `analyticsBorder` | `#5A6FD6` | Dark panel borders |
-| `background` | `#F4F5F7` | App background |
+| `primaryLight` | `#E8EAF6` | Light selected backgrounds |
+| `analyticsSurface` | `#E8EAF6` | Text on dark indigo panels |
+| `analyticsBorder` | `#7986CB` | Dark panel borders |
+| `background` | `#EEEEEE` | App background |
 | `surface` | `#FFFFFF` | Cards and forms |
 | `border` | `#E5E7EB` | Card borders and separators |
 
