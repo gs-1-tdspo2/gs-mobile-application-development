@@ -37,15 +37,38 @@ const C = {
   border:   '#DDE2EA',
 };
 
-/* ── Static content ──────────────────────────────────── */
+/* ── Static / filter options ─────────────────────────── */
 const SENSOR_DIMS = [
-  { risco: 'Enchente',       sensores: 'Nível de água · ultrassônico', color: C.blue2   },
-  { risco: 'Deslizamento',   sensores: 'Inclinação · vibração',        color: C.brown   },
-  { risco: 'Tempestade',     sensores: 'Pressão atmosférica',          color: C.steel   },
-  { risco: 'Qualidade do Ar', sensores: 'PM2.5 · PM10',                color: C.purple  },
+  { risco: 'Enchente',       sensores: 'Nível de água · ultrassônico', color: C.blue2  },
+  { risco: 'Deslizamento',   sensores: 'Inclinação · vibração',        color: C.brown  },
+  { risco: 'Tempestade',     sensores: 'Pressão atmosférica',          color: C.steel  },
+  { risco: 'Qualidade do Ar', sensores: 'PM2.5 · PM10',               color: C.purple },
 ];
 
 const RISK_ORDER: Record<string, number> = { CRITICO: 0, ALTO: 1, MODERADO: 2, BAIXO: 3 };
+
+const RISK_LEVEL_OPTS = [
+  { value: 'TODOS',    label: 'Todos'    },
+  { value: 'CRITICO',  label: 'Crítico'  },
+  { value: 'ALTO',     label: 'Alto'     },
+  { value: 'MODERADO', label: 'Moderado' },
+  { value: 'BAIXO',    label: 'Baixo'    },
+];
+
+const RISK_TYPE_OPTS = [
+  { value: 'TODOS',        label: 'Todos'    },
+  { value: 'ENCHENTE',     label: 'Enchente' },
+  { value: 'DESLIZAMENTO', label: 'Desliz.'  },
+  { value: 'TEMPESTADE',   label: 'Tempest.' },
+  { value: 'QUALIDADE_AR', label: 'Qual. Ar' },
+];
+
+const ALERT_FILTER_OPTS = [
+  { value: 'TODOS',    label: 'Todos'    },
+  { value: 'CRITICOS', label: 'Críticos' },
+  { value: 'ALTOS',    label: 'Altos'    },
+  { value: 'ABERTOS',  label: 'Abertos'  },
+];
 
 /* ── Helpers ─────────────────────────────────────────── */
 
@@ -109,7 +132,7 @@ function tipoAreaLabel(t: string): string {
     AREA_RURAL:          'Área Rural',
     COMUNIDADE:          'Comunidade',
     PONTE:               'Ponte',
-    PROPRIEDADE_PRIVADA: 'Prop. Privada',
+    PROPRIEDADE_PRIVADA: 'Prop. Priv.',
     OUTRA:               'Outra',
   };
   return map[t] ?? t.replace(/_/g, ' ');
@@ -117,10 +140,10 @@ function tipoAreaLabel(t: string): string {
 
 function statusAlertaColor(s: string): string {
   const n = s.toUpperCase();
-  if (n.includes('RESOLV'))                          return C.baixo;
+  if (n.includes('RESOLV'))                         return C.baixo;
   if (n.includes('ANALISE') || n.includes('PROC'))  return C.moderado;
   if (n.includes('ABERTO') || n.includes('ATIVO'))  return C.alto;
-  if (n.includes('CRITICO'))                         return C.critico;
+  if (n.includes('CRITICO'))                        return C.critico;
   return C.muted;
 }
 
@@ -235,8 +258,8 @@ function deriveCoverageBoard(
         }
         return ind.nomeRegiao?.toLowerCase() === r.nome?.toLowerCase();
       });
-      const best    = matched.sort((a, b) => (b.scoreMedio ?? 0) - (a.scoreMedio ?? 0))[0];
-      const nRisco  = best ? nivelRiscoNorm(best.nivelRiscoMedio) : undefined;
+      const best   = matched.sort((a, b) => (b.scoreMedio ?? 0) - (a.scoreMedio ?? 0))[0];
+      const nRisco = best ? nivelRiscoNorm(best.nivelRiscoMedio) : undefined;
       return {
         id:                      r.id,
         nome:                    r.nome,
@@ -261,23 +284,30 @@ function deriveCoverageBoard(
 /* ── Screen ──────────────────────────────────────────── */
 
 export default function HomeScreen() {
-  const [summary, setSummary]         = useState<DashboardSummary | null>(null);
-  const [indicadores, setIndicadores] = useState<IndicadorRegional[]>([]);
-  const [alertas, setAlertas]         = useState<AlertaReadModel[]>([]);
-  const [regioes, setRegioes]         = useState<RegiaoReadModel[]>([]);
+  /* ── Data state ───────────────────────────────────── */
+  const [summary,      setSummary]      = useState<DashboardSummary | null>(null);
+  const [indicadores,  setIndicadores]  = useState<IndicadorRegional[]>([]);
+  const [alertas,      setAlertas]      = useState<AlertaReadModel[]>([]);
+  const [regioes,      setRegioes]      = useState<RegiaoReadModel[]>([]);
 
-  const [summaryLoading,   setSummaryLoading]   = useState(true);
-  const [indicadoresLoad,  setIndicadoresLoad]  = useState(true);
-  const [alertasLoad,      setAlertasLoad]      = useState(true);
-  const [regioesLoad,      setRegioesLoad]      = useState(true);
+  const [summaryLoading,    setSummaryLoading]    = useState(true);
+  const [indicadoresLoad,   setIndicadoresLoad]   = useState(true);
+  const [alertasLoad,       setAlertasLoad]       = useState(true);
+  const [regioesLoad,       setRegioesLoad]       = useState(true);
 
-  const [summaryError,    setSummaryError]    = useState<string | null>(null);
+  const [summaryError,     setSummaryError]     = useState<string | null>(null);
   const [indicadoresError, setIndicadoresError] = useState<string | null>(null);
-  const [alertasError,    setAlertasError]    = useState<string | null>(null);
-  const [regioesError,    setRegioesError]    = useState<string | null>(null);
+  const [alertasError,     setAlertasError]     = useState<string | null>(null);
+  const [regioesError,     setRegioesError]     = useState<string | null>(null);
+
+  /* ── Filter state ─────────────────────────────────── */
+  const [riskLevelFilter, setRiskLevelFilter] = useState('TODOS');
+  const [riskTypeFilter,  setRiskTypeFilter]  = useState('TODOS');
+  const [alertFilter,     setAlertFilter]     = useState('TODOS');
 
   const { isDesktop } = useResponsiveLayout();
 
+  /* ── Data loading ─────────────────────────────────── */
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true); setSummaryError(null);
     try   { setSummary(await getDashboardSummary()); }
@@ -315,51 +345,118 @@ export default function HomeScreen() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  /* ── Derived data ─────────────────────────────────── */
+  /* ── Filtered datasets ────────────────────────────── */
+  const filteredIndicadores = useMemo(() => {
+    let r = indicadores;
+    if (riskLevelFilter !== 'TODOS') r = r.filter(i => nivelRiscoNorm(i.nivelRiscoMedio) === riskLevelFilter);
+    if (riskTypeFilter  !== 'TODOS') r = r.filter(i => i.tipoRisco === riskTypeFilter);
+    return r;
+  }, [indicadores, riskLevelFilter, riskTypeFilter]);
 
-  const riskDist         = useMemo(() => deriveRiskDist(indicadores),       [indicadores]);
-  const tipoDist         = useMemo(() => deriveTipoDist(indicadores),        [indicadores]);
-  const regRanking       = useMemo(() => deriveRegionalRanking(indicadores), [indicadores]);
-  const alertStatus      = useMemo(() => deriveAlertStatusDist(alertas),     [alertas]);
-  const alertNivel       = useMemo(() => deriveAlertNivelDist(alertas),      [alertas]);
-  const tipoAreaDist     = useMemo(() => deriveTipoAreaDist(regioes),        [regioes]);
-  const coverageRows     = useMemo(() => deriveCoverageBoard(regioes, indicadores), [regioes, indicadores]);
+  const filteredAlertas = useMemo(() => {
+    if (alertFilter === 'TODOS')    return alertas;
+    if (alertFilter === 'CRITICOS') return alertas.filter(a => nivelRiscoNorm(a.nivel) === 'CRITICO');
+    if (alertFilter === 'ALTOS')    return alertas.filter(a => nivelRiscoNorm(a.nivel) === 'ALTO');
+    if (alertFilter === 'ABERTOS')  return alertas.filter(a => {
+      if (!a.resolvido) return true;
+      const st = (a.status ?? '').toString().toUpperCase();
+      return st.includes('ABERTO') || st.includes('ATIVO') || st.includes('OPEN');
+    });
+    return alertas;
+  }, [alertas, alertFilter]);
 
-  const recentCritical   = useMemo(() =>
-    alertas
+  const hasRiskFilter  = riskLevelFilter !== 'TODOS' || riskTypeFilter !== 'TODOS';
+  const hasAlertFilter = alertFilter !== 'TODOS';
+
+  /* ── Derived chart data (filtered) ───────────────── */
+  const riskDist     = useMemo(() => deriveRiskDist(filteredIndicadores),        [filteredIndicadores]);
+  const tipoDist     = useMemo(() => deriveTipoDist(filteredIndicadores),         [filteredIndicadores]);
+  const regRanking   = useMemo(() => deriveRegionalRanking(filteredIndicadores),  [filteredIndicadores]);
+  const alertStatus  = useMemo(() => deriveAlertStatusDist(filteredAlertas),      [filteredAlertas]);
+  const alertNivel   = useMemo(() => deriveAlertNivelDist(filteredAlertas),       [filteredAlertas]);
+
+  /* ── Derived chart data (unfiltered — coverage zone) */
+  const tipoAreaDist     = useMemo(() => deriveTipoAreaDist(regioes),                    [regioes]);
+  const coverageRows     = useMemo(() => deriveCoverageBoard(regioes, indicadores),       [regioes, indicadores]);
+  const totalStationsInd = useMemo(() => indicadores.reduce((s, i) => s + (i.quantidadeEstacoes ?? 0), 0),      [indicadores]);
+  const totalAlertsInd   = useMemo(() => indicadores.reduce((s, i) => s + (i.quantidadeAlertasAtivos ?? 0), 0), [indicadores]);
+
+  /* ── Recent critical/high alerts (filtered) ──────── */
+  const recentCritical = useMemo(() =>
+    filteredAlertas
       .filter((a) => a.nivel === 'CRITICO' || a.nivel === 'ALTO')
-      .sort((a, b) => (b.criadoEm ? new Date(b.criadoEm).getTime() : 0) - (a.criadoEm ? new Date(a.criadoEm).getTime() : 0))
+      .sort((a, b) =>
+        (b.criadoEm ? new Date(b.criadoEm).getTime() : 0) -
+        (a.criadoEm ? new Date(a.criadoEm).getTime() : 0))
       .slice(0, 5),
-  [alertas]);
+  [filteredAlertas]);
 
-  const riskLegend: LegendItem[]        = useMemo(() => riskDist.map(s => ({ label: s.label, value: s.value, color: s.color })),  [riskDist]);
-  const alertNivelLegend: LegendItem[]  = useMemo(() => alertNivel.map(s => ({ label: s.label, value: s.value, color: s.color })), [alertNivel]);
+  /* ── Legend arrays ────────────────────────────────── */
+  const riskLegend: LegendItem[]       = useMemo(() => riskDist.map(s => ({ label: s.label, value: s.value, color: s.color })),   [riskDist]);
+  const alertNivelLegend: LegendItem[] = useMemo(() => alertNivel.map(s => ({ label: s.label, value: s.value, color: s.color })), [alertNivel]);
+
+  /* ── Ranking slice (mobile: top 5) ───────────────── */
   const rankingData = useMemo(() => isDesktop ? regRanking : regRanking.slice(0, 5), [regRanking, isDesktop]);
 
-  const insights = useMemo(() => {
+  /* ── Global insights (unfiltered, in SITUAÇÃO ATUAL) */
+  const summaryInsights = useMemo(() => {
     const result: string[] = [];
     if (indicadores.length > 0) {
       const critCount = indicadores.filter(i => nivelRiscoNorm(i.nivelRiscoMedio) === 'CRITICO').length;
-      if (critCount > 0) {
-        result.push(`${critCount} ${critCount === 1 ? 'região aparece' : 'regiões aparecem'} em nível CRÍTICO nos indicadores regionais.`);
-      }
+      if (critCount > 0)
+        result.push(`${critCount} ${critCount === 1 ? 'região crítica' : 'regiões críticas'} nos indicadores.`);
       const tipoCounts: Record<string, number> = {};
       indicadores.forEach(i => { if (i.tipoRisco) tipoCounts[i.tipoRisco] = (tipoCounts[i.tipoRisco] ?? 0) + 1; });
       const topTipo = Object.entries(tipoCounts).sort((a, b) => b[1] - a[1])[0];
-      if (topTipo && topTipo[1] > 1) {
-        result.push(`Tipo de risco mais frequente: ${tipoRiscoLabel(topTipo[0])} (${topTipo[1]} indicadores).`);
-      }
+      if (topTipo && topTipo[1] > 1)
+        result.push(`Tipo predominante: ${tipoRiscoLabel(topTipo[0])} (${topTipo[1]} indicadores).`);
     }
     if (summary && (summary.alertasAtivos ?? 0) > 0) {
       const crit = summary.alertasCriticos ?? 0;
-      result.push(`${fmt(summary.alertasAtivos)} alertas ativos${crit > 0 ? `, sendo ${crit} críticos` : ''}.`);
+      result.push(`${fmt(summary.alertasAtivos)} alertas ativos${crit > 0 ? `, ${crit} críticos` : ''}.`);
     }
     return result.slice(0, 2);
   }, [indicadores, summary]);
 
-  const totalStationsInIndicators = useMemo(() => indicadores.reduce((s, i) => s + (i.quantidadeEstacoes ?? 0), 0), [indicadores]);
-  const totalAlertsInIndicators   = useMemo(() => indicadores.reduce((s, i) => s + (i.quantidadeAlertasAtivos ?? 0), 0), [indicadores]);
+  /* ── Risk insights (filtered, in INTELIGÊNCIA zone) ─ */
+  const riskInsights = useMemo(() => {
+    const result: string[] = [];
+    const isFiltered = riskLevelFilter !== 'TODOS' || riskTypeFilter !== 'TODOS';
+    if (filteredIndicadores.length === 0) {
+      if (isFiltered) result.push('Nenhum indicador corresponde ao filtro selecionado.');
+      return result;
+    }
+    const critCount = filteredIndicadores.filter(i => nivelRiscoNorm(i.nivelRiscoMedio) === 'CRITICO').length;
+    if (critCount > 0)
+      result.push(`${critCount} indicador${critCount > 1 ? 'es críticos' : ' crítico'}${isFiltered ? ' no filtro atual' : ''}.`);
+    if (riskTypeFilter === 'TODOS') {
+      const tc: Record<string, number> = {};
+      filteredIndicadores.forEach(i => { if (i.tipoRisco) tc[i.tipoRisco] = (tc[i.tipoRisco] ?? 0) + 1; });
+      const top = Object.entries(tc).sort((a, b) => b[1] - a[1])[0];
+      if (top && top[1] > 0)
+        result.push(`Tipo predominante: ${tipoRiscoLabel(top[0])} (${top[1]} registro${top[1] > 1 ? 's' : ''}).`);
+    }
+    const topReg = filteredIndicadores
+      .filter(i => i.nomeRegiao && (i.scoreMedio ?? 0) > 0)
+      .sort((a, b) => (b.scoreMedio ?? 0) - (a.scoreMedio ?? 0))[0];
+    if (topReg?.scoreMedio && topReg.nomeRegiao && result.length < 2)
+      result.push(`Maior score: ${Math.round(topReg.scoreMedio)} — ${topReg.nomeRegiao}.`);
+    return result.slice(0, 2);
+  }, [filteredIndicadores, riskLevelFilter, riskTypeFilter]);
 
+  /* ── Alert insights (filtered, in RESPOSTA zone) ─── */
+  const alertInsights = useMemo(() => {
+    const isFiltered = alertFilter !== 'TODOS';
+    if (filteredAlertas.length === 0) {
+      if (isFiltered) return ['Nenhum alerta corresponde ao filtro selecionado.'];
+      return [];
+    }
+    const critCount = filteredAlertas.filter(a => nivelRiscoNorm(a.nivel) === 'CRITICO').length;
+    const suffix    = isFiltered ? ' no filtro atual' : '';
+    return [`${filteredAlertas.length} alerta${filteredAlertas.length > 1 ? 's' : ''}${suffix}${critCount > 0 ? `, ${critCount} crítico${critCount > 1 ? 's' : ''}` : ''}.`];
+  }, [filteredAlertas, alertFilter]);
+
+  /* ── Layout helpers ───────────────────────────────── */
   const isRefreshing = summaryLoading || indicadoresLoad || alertasLoad || regioesLoad;
   const row          = isDesktop ? s.rowD : s.rowM;
 
@@ -368,7 +465,7 @@ export default function HomeScreen() {
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={[s.scroll, isDesktop && s.scrollD]}>
 
-          {/* ─── Header ───────────────────────────────── */}
+          {/* ── Header ──────────────────────────────── */}
           <View style={[s.header, isDesktop && s.headerRow]}>
             <Text style={s.pageTitle}>Dashboard</Text>
             <Pressable
@@ -379,9 +476,9 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* ═══════════════════════════════════════════ */}
-          {/* ZONA A — SITUAÇÃO ATUAL                     */}
-          {/* ═══════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════ */}
+          {/* ZONA A — SITUAÇÃO ATUAL                  */}
+          {/* ═══════════════════════════════════════ */}
           <ZoneHeader title="SITUAÇÃO ATUAL" />
 
           {summaryLoading ? (
@@ -394,103 +491,206 @@ export default function HomeScreen() {
           ) : summary ? (
             <>
               <OperationalPanel summary={summary} isDesktop={isDesktop} />
-              {insights.length > 0 ? <InsightStrip insights={insights} isDesktop={isDesktop} /> : null}
+              {summaryInsights.length > 0 ? (
+                <InsightStrip insights={summaryInsights} isDesktop={isDesktop} />
+              ) : null}
               <View style={s.kpiGrid}>
-                <KpiChip label="Regiões"    value={fmt(summary.totalRegioes)}          accent={C.primary} />
-                <KpiChip label="Estações"   value={fmt(summary.totalEstacoesAtivas)}   accent={C.teal} />
-                <KpiChip label="Alertas"    value={fmt(summary.alertasAtivos)}          accent={C.alto} />
-                <KpiChip label="Leituras"   value={fmt(summary.leiturasValidas)}        accent={C.primary} />
-                <KpiChip label="Obs. Clim." value={fmt(summary.observacoesClimaticas)} accent={C.teal} />
+                <KpiChip label="Regiões"    value={fmt(summary.totalRegioes)}          accent={C.primary}  />
+                <KpiChip label="Estações"   value={fmt(summary.totalEstacoesAtivas)}   accent={C.teal}     />
+                <KpiChip label="Alertas"    value={fmt(summary.alertasAtivos)}          accent={C.alto}     />
+                <KpiChip label="Leituras"   value={fmt(summary.leiturasValidas)}        accent={C.primary}  />
+                <KpiChip label="Obs. Clim." value={fmt(summary.observacoesClimaticas)} accent={C.teal}     />
                 <KpiChip label="Av. Risco"  value={fmt(summary.avaliacoesRisco)}        accent={C.moderado} />
               </View>
             </>
           ) : null}
 
-          {/* ═══════════════════════════════════════════ */}
-          {/* ZONA B — INTELIGÊNCIA DE RISCO              */}
-          {/* ═══════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════ */}
+          {/* ZONA B — INTELIGÊNCIA DE RISCO           */}
+          {/* ═══════════════════════════════════════ */}
           <ZoneHeader
             title="INTELIGÊNCIA DE RISCO"
-            badge={indicadoresLoad ? 'carregando' : indicadoresError ? 'erro' : `${indicadores.length} indicadores`}
+            badge={
+              indicadoresLoad  ? 'carregando'
+              : indicadoresError ? 'erro'
+              : hasRiskFilter   ? `${filteredIndicadores.length}/${indicadores.length}`
+              : `${indicadores.length} indicadores`
+            }
           />
 
+          {/* Risk filter chips */}
           {!indicadoresLoad && !indicadoresError ? (
-            <View style={row}>
-              <ChartCard title="Distribuição de Risco" subtitle="Por nível nos indicadores regionais" style={s.flex1}>
-                <View style={s.donutRow}>
-                  <DonutChart data={riskDist} size={isDesktop ? 130 : 110} thickness={26} centerLabel="total" centerValue={indicadores.length} />
-                  <ChartLegend items={riskLegend} />
+            <View style={s.filterBlock}>
+              <View style={s.filterRow}>
+                <Text style={s.filterRowLabel}>Nível</Text>
+                <FilterChips
+                  options={RISK_LEVEL_OPTS}
+                  selected={riskLevelFilter}
+                  onSelect={setRiskLevelFilter}
+                  activeColor={riskLevelFilter !== 'TODOS' ? riskColor(riskLevelFilter) : C.primary}
+                />
+              </View>
+              <View style={s.filterRow}>
+                <Text style={s.filterRowLabel}>Tipo</Text>
+                <FilterChips
+                  options={RISK_TYPE_OPTS}
+                  selected={riskTypeFilter}
+                  onSelect={setRiskTypeFilter}
+                />
+              </View>
+              {hasRiskFilter ? (
+                <View style={s.filterFooter}>
+                  <Pressable
+                    onPress={() => { setRiskLevelFilter('TODOS'); setRiskTypeFilter('TODOS'); }}
+                    style={({ hovered }) => [s.clearBtn, hovered && s.clearBtnHov]}>
+                    <Text style={s.clearBtnTxt}>Limpar filtros</Text>
+                  </Pressable>
                 </View>
-              </ChartCard>
-              <ChartCard title="Tipo de Risco" subtitle="Categoria de perigo monitorada" style={s.flex1}>
-                <VerticalBarChart data={tipoDist} maxBarHeight={80} />
-              </ChartCard>
-              <ChartCard title="Score Regional" subtitle={`Ranking por score máximo${!isDesktop ? ' · top 5' : ''}`} style={s.flex2}>
-                <HorizontalBarChart data={rankingData} labelWidth={isDesktop ? 120 : 90} />
-              </ChartCard>
+              ) : null}
             </View>
+          ) : null}
+
+          {/* Risk insights (filter-aware) */}
+          {riskInsights.length > 0 ? (
+            <SectionInsight items={riskInsights} />
+          ) : null}
+
+          {/* Risk charts or empty state */}
+          {!indicadoresLoad && !indicadoresError ? (
+            filteredIndicadores.length === 0 && hasRiskFilter ? (
+              <View style={s.emptySection}>
+                <Text style={s.emptySectionTxt}>
+                  Nenhum indicador corresponde aos filtros selecionados.
+                </Text>
+              </View>
+            ) : (
+              <View style={row}>
+                <ChartCard title="Distribuição de Risco" subtitle="Por nível nos indicadores regionais" style={s.flex1}>
+                  <View style={s.donutRow}>
+                    <DonutChart data={riskDist} size={isDesktop ? 130 : 110} thickness={26} centerLabel="total" centerValue={filteredIndicadores.length} />
+                    <ChartLegend items={riskLegend} />
+                  </View>
+                </ChartCard>
+                <ChartCard title="Tipo de Risco" subtitle="Categoria de perigo monitorada" style={s.flex1}>
+                  <VerticalBarChart data={tipoDist} maxBarHeight={80} />
+                </ChartCard>
+                <ChartCard title="Score Regional" subtitle={`Ranking por score${!isDesktop ? ' · top 5' : ''}`} style={s.flex2}>
+                  <HorizontalBarChart data={rankingData} labelWidth={isDesktop ? 120 : 90} />
+                </ChartCard>
+              </View>
+            )
           ) : indicadoresError ? (
             <PartialError msg={indicadoresError} />
           ) : null}
 
-          {/* ═══════════════════════════════════════════ */}
-          {/* ZONA C — RESPOSTA OPERACIONAL               */}
-          {/* ═══════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════ */}
+          {/* ZONA C — RESPOSTA OPERACIONAL            */}
+          {/* ═══════════════════════════════════════ */}
           <ZoneHeader
             title="RESPOSTA OPERACIONAL"
-            badge={alertasLoad ? 'carregando' : alertasError ? 'erro' : `${alertas.length} alertas`}
+            badge={
+              alertasLoad   ? 'carregando'
+              : alertasError  ? 'erro'
+              : hasAlertFilter ? `${filteredAlertas.length}/${alertas.length}`
+              : `${alertas.length} alertas`
+            }
           />
 
+          {/* Alert filter chips */}
           {!alertasLoad && !alertasError ? (
-            <>
-              <View style={row}>
-                <ChartCard title="Severidade dos Alertas" subtitle="Distribuição por nível de risco" style={s.flex1}>
-                  <View style={s.donutRow}>
-                    <DonutChart data={alertNivel} size={isDesktop ? 120 : 100} thickness={24} centerLabel="total" centerValue={alertas.length} />
-                    <ChartLegend items={alertNivelLegend} compact />
-                  </View>
-                </ChartCard>
-                <ChartCard title="Estado dos Alertas" subtitle="Distribuição por status operacional" style={s.flex2}>
-                  <HorizontalBarChart data={alertStatus} labelWidth={isDesktop ? 110 : 80} />
-                </ChartCard>
+            <View style={s.filterBlock}>
+              <View style={s.filterRow}>
+                <Text style={s.filterRowLabel}>Alerta</Text>
+                <FilterChips
+                  options={ALERT_FILTER_OPTS}
+                  selected={alertFilter}
+                  onSelect={setAlertFilter}
+                  activeColor={
+                    alertFilter === 'CRITICOS' ? C.critico
+                    : alertFilter === 'ALTOS'   ? C.alto
+                    : C.primary
+                  }
+                />
               </View>
-              <ChartCard title="Alertas Críticos e Altos" subtitle="Eventos prioritários recentes">
-                {recentCritical.length === 0 ? (
-                  <Text style={s.noData}>Nenhum alerta crítico ou alto ativo.</Text>
-                ) : (
-                  <View>
-                    {recentCritical.map((a, i) => (
-                      <AlertRow key={String(a.id)} alerta={a} last={i === recentCritical.length - 1} />
-                    ))}
-                  </View>
-                )}
-              </ChartCard>
-            </>
+              {hasAlertFilter ? (
+                <View style={s.filterFooter}>
+                  <Pressable
+                    onPress={() => setAlertFilter('TODOS')}
+                    style={({ hovered }) => [s.clearBtn, hovered && s.clearBtnHov]}>
+                    <Text style={s.clearBtnTxt}>Limpar</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Alert insights (filter-aware) */}
+          {alertInsights.length > 0 ? (
+            <SectionInsight items={alertInsights} />
+          ) : null}
+
+          {/* Alert charts or empty state */}
+          {!alertasLoad && !alertasError ? (
+            filteredAlertas.length === 0 && hasAlertFilter ? (
+              <View style={s.emptySection}>
+                <Text style={s.emptySectionTxt}>
+                  Nenhum alerta corresponde ao filtro selecionado.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={row}>
+                  <ChartCard title="Severidade dos Alertas" subtitle="Distribuição por nível de risco" style={s.flex1}>
+                    <View style={s.donutRow}>
+                      <DonutChart data={alertNivel} size={isDesktop ? 120 : 100} thickness={24} centerLabel="total" centerValue={filteredAlertas.length} />
+                      <ChartLegend items={alertNivelLegend} compact />
+                    </View>
+                  </ChartCard>
+                  <ChartCard title="Estado dos Alertas" subtitle="Distribuição por status operacional" style={s.flex2}>
+                    <HorizontalBarChart data={alertStatus} labelWidth={isDesktop ? 110 : 80} />
+                  </ChartCard>
+                </View>
+                <ChartCard title="Alertas Críticos e Altos" subtitle="Eventos prioritários recentes">
+                  {recentCritical.length === 0 ? (
+                    <Text style={s.noData}>
+                      {hasAlertFilter
+                        ? 'Nenhum alerta crítico ou alto no filtro atual.'
+                        : 'Nenhum alerta crítico ou alto ativo.'}
+                    </Text>
+                  ) : (
+                    <View>
+                      {recentCritical.map((a, i) => (
+                        <AlertRow key={String(a.id)} alerta={a} last={i === recentCritical.length - 1} />
+                      ))}
+                    </View>
+                  )}
+                </ChartCard>
+              </>
+            )
           ) : alertasError ? (
             <PartialError msg={alertasError} />
           ) : null}
 
-          {/* ═══════════════════════════════════════════ */}
-          {/* ZONA D — COBERTURA IOT E DADOS              */}
-          {/* ═══════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════ */}
+          {/* ZONA D — COBERTURA IOT E DADOS           */}
+          {/* ═══════════════════════════════════════ */}
           <ZoneHeader
             title="COBERTURA IOT E DADOS"
             badge={regioesLoad ? 'carregando' : regioesError ? 'erro' : `${regioes.length} regiões`}
           />
 
-          {/* Sensor network + coverage counts */}
           <View style={row}>
             <ChartCard title="Rede de Sensores e Dados" subtitle="Totais consolidados da plataforma" style={s.flex1}>
               <View style={s.sensorStats}>
-                <SensorStat label="Estações ativas"      value={fmt(summary?.totalEstacoesAtivas)}   color={C.teal} />
-                <SensorStat label="Leituras válidas"      value={fmt(summary?.leiturasValidas)}        color={C.primary} />
-                <SensorStat label="Observações climáticas" value={fmt(summary?.observacoesClimaticas)} color={C.primary} />
-                <SensorStat label="Avaliações de risco"   value={fmt(summary?.avaliacoesRisco)}        color={C.moderado} />
-                <SensorStat label="Estações (indicadores)" value={fmt(totalStationsInIndicators)}     color={C.teal} />
-                <SensorStat label="Alertas (indicadores)"  value={fmt(totalAlertsInIndicators)}       color={C.alto} />
+                <SensorStat label="Estações ativas"         value={fmt(summary?.totalEstacoesAtivas)}   color={C.teal}    />
+                <SensorStat label="Leituras válidas"         value={fmt(summary?.leiturasValidas)}        color={C.primary} />
+                <SensorStat label="Observações climáticas"   value={fmt(summary?.observacoesClimaticas)} color={C.primary} />
+                <SensorStat label="Avaliações de risco"      value={fmt(summary?.avaliacoesRisco)}        color={C.moderado}/>
+                <SensorStat label="Estações (indicadores)"   value={fmt(totalStationsInd)}               color={C.teal}    />
+                <SensorStat label="Alertas (indicadores)"    value={fmt(totalAlertsInd)}                 color={C.alto}    />
               </View>
             </ChartCard>
-            <ChartCard title="Dimensões Monitoradas" subtitle="Tipos de risco e sensores correspondentes" style={s.flex1}>
+            <ChartCard title="Dimensões Monitoradas" subtitle="Capacidade de sensoriamento por tipo de risco" style={s.flex1}>
               <View style={s.dimList}>
                 {SENSOR_DIMS.map((d) => (
                   <View key={d.risco} style={s.dimRow}>
@@ -506,17 +706,15 @@ export default function HomeScreen() {
             </ChartCard>
           </View>
 
-          {/* Tipo de área distribution */}
           {tipoAreaDist.length > 0 ? (
             <ChartCard title="Distribuição por Tipo de Área" subtitle="Classificação das regiões monitoradas">
               <VerticalBarChart data={tipoAreaDist} maxBarHeight={80} />
             </ChartCard>
           ) : null}
 
-          {/* Deployment board */}
           <ChartCard
             title="Cobertura Operacional"
-            subtitle="Regiões monitoradas · nível de risco e vulnerabilidade cadastrada">
+            subtitle="Regiões monitoradas · nível de risco e vulnerabilidade">
             {regioesLoad ? (
               <Text style={s.noData}>Carregando regiões...</Text>
             ) : regioesError ? (
@@ -528,7 +726,6 @@ export default function HomeScreen() {
             )}
           </ChartCard>
 
-          {/* Action shortcuts */}
           <ActionShortcuts />
 
         </ScrollView>
@@ -600,6 +797,57 @@ function InsightStrip({ insights, isDesktop }: { insights: string[]; isDesktop: 
   );
 }
 
+function SectionInsight({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <View style={si.root}>
+      {items.map((text, i) => (
+        <View key={i} style={si.row}>
+          <View style={si.dot} />
+          <Text style={si.text}>{text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function FilterChips({
+  options,
+  selected,
+  onSelect,
+  activeColor = C.primary,
+}: {
+  options: { value: string; label: string }[];
+  selected: string;
+  onSelect: (v: string) => void;
+  activeColor?: string;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={fc.scroll}
+      contentContainerStyle={fc.container}>
+      {options.map((opt) => {
+        const active = opt.value === selected;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onSelect(opt.value)}
+            style={[
+              fc.chip,
+              active && { backgroundColor: activeColor, borderColor: activeColor },
+            ]}>
+            <Text style={[fc.chipTxt, active && fc.chipTxtActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 function KpiChip({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <View style={kc.chip}>
@@ -668,8 +916,8 @@ function CoverageBoard({ rows, isDesktop }: { rows: CoverageRow[]; isDesktop: bo
 }
 
 function DesktopCoverageRow({ row }: { row: CoverageRow }) {
-  const rc  = row.nivelRisco ? riskColor(row.nivelRisco) : null;
-  const vc  = row.nivelVulnerabilidade !== undefined ? vulnColor(row.nivelVulnerabilidade) : null;
+  const rc = row.nivelRisco ? riskColor(row.nivelRisco) : null;
+  const vc = row.nivelVulnerabilidade !== undefined ? vulnColor(row.nivelVulnerabilidade) : null;
   return (
     <View style={cb.trow}>
       <Text style={[cb.cell, cb.cUf]}>{row.estado ?? '—'}</Text>
@@ -688,8 +936,8 @@ function DesktopCoverageRow({ row }: { row: CoverageRow }) {
           </View>
         ) : <Text style={cb.dash}>—</Text>}
       </View>
-      <Text style={[cb.cell, cb.cEst]}>{row.quantidadeEstacoes !== undefined ? row.quantidadeEstacoes : '—'}</Text>
-      <Text style={[cb.cell, cb.cAl]}>{row.quantidadeAlertasAtivos !== undefined ? row.quantidadeAlertasAtivos : '—'}</Text>
+      <Text style={[cb.cell, cb.cEst]}>{row.quantidadeEstacoes ?? '—'}</Text>
+      <Text style={[cb.cell, cb.cAl]}>{row.quantidadeAlertasAtivos ?? '—'}</Text>
     </View>
   );
 }
@@ -715,12 +963,8 @@ function MobileCoverageCard({ row }: { row: CoverageRow }) {
         {row.nivelVulnerabilidade !== undefined && vc ? (
           <Text style={[mc.vuln, { color: vc }]}>Vuln. {row.nivelVulnerabilidade}</Text>
         ) : null}
-        {row.quantidadeEstacoes !== undefined ? (
-          <Text style={mc.metaTxt}>{row.quantidadeEstacoes} est.</Text>
-        ) : null}
-        {row.quantidadeAlertasAtivos !== undefined ? (
-          <Text style={mc.metaTxt}>{row.quantidadeAlertasAtivos} alertas</Text>
-        ) : null}
+        {row.quantidadeEstacoes !== undefined ? <Text style={mc.metaTxt}>{row.quantidadeEstacoes} est.</Text> : null}
+        {row.quantidadeAlertasAtivos !== undefined ? <Text style={mc.metaTxt}>{row.quantidadeAlertasAtivos} alertas</Text> : null}
       </View>
     </View>
   );
@@ -728,10 +972,10 @@ function MobileCoverageCard({ row }: { row: CoverageRow }) {
 
 function ActionShortcuts() {
   const actions = [
-    { label: 'Ver alertas críticos',   route: '/alertas'            },
-    { label: 'Regiões monitoradas',    route: '/regioes'            },
-    { label: 'Cadastrar região',       route: '/gerenciar-regioes'  },
-    { label: 'Ver indicadores',        route: '/indicadores'        },
+    { label: 'Ver alertas críticos',  route: '/alertas'           },
+    { label: 'Regiões monitoradas',   route: '/regioes'           },
+    { label: 'Cadastrar região',      route: '/gerenciar-regioes' },
+    { label: 'Ver indicadores',       route: '/indicadores'       },
   ] as const;
   return (
     <View style={ac.root}>
@@ -775,6 +1019,17 @@ const s = StyleSheet.create({
   partialErr:    { backgroundColor: '#FFFBEB', borderColor: '#FCD34D', borderRadius: 6, borderWidth: 1, padding: 12 },
   partialErrTxt: { color: '#92400E', fontSize: 12 },
 
+  filterBlock:    { backgroundColor: '#FFFFFF', borderColor: '#DDE2EA', borderRadius: 8, borderWidth: 1, gap: 10, padding: 12 },
+  filterRow:      { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  filterRowLabel: { color: '#6B7280', fontSize: 10, fontWeight: '700', letterSpacing: 0.4, minWidth: 36, textTransform: 'uppercase' },
+  filterFooter:   { alignItems: 'flex-end' },
+  clearBtn:       { borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 },
+  clearBtnHov:    { backgroundColor: '#EEF2FF' },
+  clearBtnTxt:    { color: '#3F51B5', fontSize: 11, fontWeight: '600' },
+
+  emptySection:    { alignItems: 'center', backgroundColor: '#FFF', borderColor: '#DDE2EA', borderRadius: 8, borderWidth: 1, gap: 10, padding: 24 },
+  emptySectionTxt: { color: '#6B7280', fontSize: 13, textAlign: 'center' },
+
   kpiGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
   rowD:          { flexDirection: 'row', gap: 12 },
@@ -810,8 +1065,8 @@ const op = StyleSheet.create({
     borderLeftWidth: 4,
     borderRadius: 8,
     borderWidth: 1,
-    padding: 16,
     gap: 12,
+    padding: 16,
   },
   header:      { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   sectionLabel: { color: '#6B7280', fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
@@ -840,10 +1095,25 @@ const ins = StyleSheet.create({
   text:  { color: '#374151', flex: 1, fontSize: 12, lineHeight: 17 },
 });
 
+const si = StyleSheet.create({
+  root: { backgroundColor: '#F8F9FF', borderColor: '#C5CAE9', borderRadius: 6, borderWidth: 1, gap: 4, padding: 10 },
+  row:  { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
+  dot:  { backgroundColor: '#3F51B5', borderRadius: 99, flexShrink: 0, height: 5, marginTop: 4, width: 5 },
+  text: { color: '#374151', flex: 1, fontSize: 12, lineHeight: 17 },
+});
+
+const fc = StyleSheet.create({
+  scroll:       { flex: 1 },
+  container:    { flexDirection: 'row', gap: 6, paddingVertical: 2 },
+  chip:         { borderColor: '#C5CAE9', borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 5 },
+  chipTxt:      { color: '#4B5563', fontSize: 12, fontWeight: '500' },
+  chipTxtActive: { color: '#FFFFFF', fontWeight: '700' },
+});
+
 const kc = StyleSheet.create({
-  chip:  { backgroundColor: '#FFFFFF', borderColor: '#DDE2EA', borderRadius: 6, borderWidth: 1, flexBasis: '14%', flexGrow: 1, gap: 2, minWidth: 80, padding: 10 },
-  val:   { color: '#1F2937', fontSize: 18, fontWeight: '700' },
-  lbl:   { fontSize: 10, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase' },
+  chip: { backgroundColor: '#FFFFFF', borderColor: '#DDE2EA', borderRadius: 6, borderWidth: 1, flexBasis: '14%', flexGrow: 1, gap: 2, minWidth: 80, padding: 10 },
+  val:  { color: '#1F2937', fontSize: 18, fontWeight: '700' },
+  lbl:  { fontSize: 10, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase' },
 });
 
 const ss = StyleSheet.create({
@@ -853,40 +1123,40 @@ const ss = StyleSheet.create({
 });
 
 const al = StyleSheet.create({
-  row:      { alignItems: 'center', flexDirection: 'row', gap: 12, paddingVertical: 10 },
+  row:       { alignItems: 'center', flexDirection: 'row', gap: 12, paddingVertical: 10 },
   rowBorder: { borderBottomColor: '#F3F4F6', borderBottomWidth: 1 },
-  dot:      { borderRadius: 99, flexShrink: 0, height: 8, width: 8 },
-  content:  { flex: 1, gap: 2 },
-  titulo:   { color: '#1F2937', fontSize: 13, fontWeight: '600' },
-  sub:      { color: '#6B7280', fontSize: 11 },
-  badge:    { borderRadius: 4, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
-  badgeTxt: { fontSize: 10, fontWeight: '700' },
+  dot:       { borderRadius: 99, flexShrink: 0, height: 8, width: 8 },
+  content:   { flex: 1, gap: 2 },
+  titulo:    { color: '#1F2937', fontSize: 13, fontWeight: '600' },
+  sub:       { color: '#6B7280', fontSize: 11 },
+  badge:     { borderRadius: 4, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeTxt:  { fontSize: 10, fontWeight: '700' },
 });
 
 const cb = StyleSheet.create({
-  root:   { overflow: 'hidden' },
+  root:  { overflow: 'hidden' },
   thead: {
     alignItems: 'center',
     backgroundColor: '#F8F9FB',
     borderBottomColor: '#DDE2EA',
     borderBottomWidth: 1,
     flexDirection: 'row',
+    marginBottom: 0,
     marginHorizontal: -16,
     marginTop: -16,
-    marginBottom: 0,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  th:     { color: '#6B7280', fontSize: 10, fontWeight: '700', letterSpacing: 0.4, paddingHorizontal: 4 },
-  trow:   { alignItems: 'center', borderBottomColor: '#F3F4F6', borderBottomWidth: 1, flexDirection: 'row', paddingVertical: 9, minHeight: 44 },
-  cell:   { color: '#4B5563', fontSize: 12, paddingHorizontal: 4 },
-  cUf:    { width: 40 },
-  cNome:  { flex: 2, paddingHorizontal: 4 },
-  cTipo:  { width: 100 },
-  cVuln:  { paddingHorizontal: 4, textAlign: 'center', width: 52 },
-  cRisco: { alignItems: 'flex-start', paddingHorizontal: 4, width: 90 },
-  cEst:   { paddingHorizontal: 4, textAlign: 'center', width: 52 },
-  cAl:    { paddingHorizontal: 4, textAlign: 'center', width: 64 },
+  th:      { color: '#6B7280', fontSize: 10, fontWeight: '700', letterSpacing: 0.4, paddingHorizontal: 4 },
+  trow:    { alignItems: 'center', borderBottomColor: '#F3F4F6', borderBottomWidth: 1, flexDirection: 'row', minHeight: 44, paddingVertical: 9 },
+  cell:    { color: '#4B5563', fontSize: 12, paddingHorizontal: 4 },
+  cUf:     { width: 40 },
+  cNome:   { flex: 2, paddingHorizontal: 4 },
+  cTipo:   { width: 100 },
+  cVuln:   { paddingHorizontal: 4, textAlign: 'center', width: 52 },
+  cRisco:  { alignItems: 'flex-start', paddingHorizontal: 4, width: 90 },
+  cEst:    { paddingHorizontal: 4, textAlign: 'center', width: 52 },
+  cAl:     { paddingHorizontal: 4, textAlign: 'center', width: 64 },
   rowNome: { color: '#1F2937', fontSize: 12, fontWeight: '600' },
   rowSub:  { color: '#9CA3AF', fontSize: 10, marginTop: 1 },
   rBadge:  { borderRadius: 4, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
@@ -895,17 +1165,17 @@ const cb = StyleSheet.create({
 });
 
 const mc = StyleSheet.create({
-  card:    { backgroundColor: '#FFFFFF', borderColor: '#DDE2EA', borderLeftWidth: 3, borderRadius: 7, borderWidth: 1, gap: 8, marginBottom: 8, padding: 12 },
-  top:     { alignItems: 'flex-start', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  info:    { flex: 1, gap: 2 },
-  nome:    { color: '#1F2937', fontSize: 13, fontWeight: '600' },
-  sub:     { color: '#6B7280', fontSize: 11 },
-  badge:   { borderRadius: 4, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
+  card:     { backgroundColor: '#FFFFFF', borderColor: '#DDE2EA', borderLeftWidth: 3, borderRadius: 7, borderWidth: 1, gap: 8, marginBottom: 8, padding: 12 },
+  top:      { alignItems: 'flex-start', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  info:     { flex: 1, gap: 2 },
+  nome:     { color: '#1F2937', fontSize: 13, fontWeight: '600' },
+  sub:      { color: '#6B7280', fontSize: 11 },
+  badge:    { borderRadius: 4, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
   badgeTxt: { fontSize: 10, fontWeight: '700' },
-  meta:    { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip:    { backgroundColor: '#EEF2FF', borderRadius: 99, color: '#3F51B5', fontSize: 11, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 2 },
-  vuln:    { fontSize: 11, fontWeight: '700' },
-  metaTxt: { color: '#6B7280', fontSize: 11 },
+  meta:     { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip:     { backgroundColor: '#EEF2FF', borderRadius: 99, color: '#3F51B5', fontSize: 11, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 2 },
+  vuln:     { fontSize: 11, fontWeight: '700' },
+  metaTxt:  { color: '#6B7280', fontSize: 11 },
 });
 
 const ac = StyleSheet.create({
