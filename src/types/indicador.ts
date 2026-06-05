@@ -1,11 +1,15 @@
 export type IndicadorRegional = {
-  id?: number;
-  regiaoId?: number;
-  regiaoNome?: string;
-  nome?: string;
-  valor?: number;
-  unidade?: string;
-  categoria?: string;
-  medidoEm?: string;
+  idIndicador?: number;
+  idRegiao?: number | null;
+  nomeRegiao?: string | null;
+  estado?: string;
+  cidade?: string;
+  tipoRisco?: string;
+  scoreMedio?: number;
+  nivelRiscoMedio?: string;
+  quantidadeEstacoes?: number;
+  quantidadeAlertasAtivos?: number;
+  fonteCalculo?: string;
+  dtCalculo?: string;
   [key: string]: unknown;
 };
