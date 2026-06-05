@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -22,6 +22,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
+import { listarClientes } from '@/services/clientesService';
 import {
   createRegiao,
   deleteRegiao,
@@ -29,19 +30,141 @@ import {
   updateRegiao,
 } from '@/services/regioesService';
 import { screenStyles } from '@/styles/global';
-import { RegiaoCreateRequest, RegiaoReadModel, RegiaoUpdateRequest } from '@/types/regiao';
+import { Cliente } from '@/types/cliente';
+import {
+  RegiaoCreateRequest,
+  RegiaoReadModel,
+  RegiaoUpdateRequest,
+  TipoArea,
+  TipoVisibilidade,
+} from '@/types/regiao';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { useResponsiveLayout } from '@/utils/responsive';
 
+/* ── Web-only style helper ───────────────────────────── */
+// Suppresses the browser's default input outline (black focus rectangle).
+const noOutline = { outlineWidth: 0 } as object;
+
 /* ── Constants ───────────────────────────────────────── */
 
-type ClientType = 'Governo / Defesa Civil' | 'ONG';
+type VulnProfile = 'BAIXA' | 'MODERADA' | 'ALTA' | 'CRITICA';
+
 type FormState = {
-  nome: string; cidade: string; estado: string;
-  tipoCliente: ClientType | ''; descricao: string; ativo: boolean;
+  idCliente: number;
+  nome: string;
+  cidade: string;
+  estado: string;
+  latitude: string;
+  longitude: string;
+  tipoArea: TipoArea | '';
+  vulnProfile: VulnProfile | '';
+  vulnValue: number;
+  tipoVisibilidade: TipoVisibilidade | '';
 };
+
+type LocationPreset = {
+  key: string;
+  label: string;
+  cidade: string;
+  estado: string;
+  latitude: number;
+  longitude: number;
+  tipoArea: TipoArea;
+  tipoVisibilidade: TipoVisibilidade;
+  nivelVulnerabilidade: number;
+};
+
 type Feedback   = { ok: boolean; msg: string };
 type ListFilter = 'todos' | 'ativos' | 'inativos';
+
+const MANUAL_KEY = 'outro';
+
+const VULN_PROFILES: { value: VulnProfile; label: string; numericValue: number }[] = [
+  { value: 'BAIXA',    label: 'Baixa',   numericValue: 20 },
+  { value: 'MODERADA', label: 'Moderada', numericValue: 45 },
+  { value: 'ALTA',     label: 'Alta',    numericValue: 65 },
+  { value: 'CRITICA',  label: 'Crítica', numericValue: 85 },
+];
+
+const LOCATION_PRESETS: LocationPreset[] = [
+  {
+    key:                  'cais-maua',
+    label:                'Cais Mauá - Porto Alegre / RS',
+    cidade:               'Porto Alegre',
+    estado:               'RS',
+    latitude:             -30.0328,
+    longitude:            -51.2302,
+    tipoArea:             'AREA_URBANA',
+    tipoVisibilidade:     'INSTITUCIONAL',
+    nivelVulnerabilidade: 86,
+  },
+  {
+    key:                  'ribeirinha-manaus',
+    label:                'Comunidade Ribeirinha - Manaus / AM',
+    cidade:               'Manaus',
+    estado:               'AM',
+    latitude:             -3.1190,
+    longitude:            -60.0217,
+    tipoArea:             'REGIAO_RIBEIRINHA',
+    tipoVisibilidade:     'INSTITUCIONAL',
+    nivelVulnerabilidade: 82,
+  },
+  {
+    key:                  'encosta-esperanca',
+    label:                'Encosta Vila Nova Esperança / RS',
+    cidade:               'Porto Alegre',
+    estado:               'RS',
+    latitude:             -30.0777,
+    longitude:            -51.1816,
+    tipoArea:             'ENCOSTA',
+    tipoVisibilidade:     'INSTITUCIONAL',
+    nivelVulnerabilidade: 90,
+  },
+  {
+    key:                  'campus-ribeirao',
+    label:                'Campus Climático - Ribeirão Preto / SP',
+    cidade:               'Ribeirão Preto',
+    estado:               'SP',
+    latitude:             -21.1775,
+    longitude:            -47.8103,
+    tipoArea:             'AREA_URBANA',
+    tipoVisibilidade:     'AGREGADA_PUBLICA',
+    nivelVulnerabilidade: 76,
+  },
+  {
+    key:                  'ribeirinha-santarem',
+    label:                'Região Ribeirinha - Santarém / PA',
+    cidade:               'Santarém',
+    estado:               'PA',
+    latitude:             -2.4431,
+    longitude:            -54.7083,
+    tipoArea:             'REGIAO_RIBEIRINHA',
+    tipoVisibilidade:     'INSTITUCIONAL',
+    nivelVulnerabilidade: 78,
+  },
+  {
+    key:                  'semiarido-juazeiro',
+    label:                'Semiárido - Juazeiro / BA',
+    cidade:               'Juazeiro',
+    estado:               'BA',
+    latitude:             -9.4162,
+    longitude:            -40.5033,
+    tipoArea:             'AREA_RURAL',
+    tipoVisibilidade:     'AGREGADA_PUBLICA',
+    nivelVulnerabilidade: 74,
+  },
+  {
+    key:                  'agroclima-sorriso',
+    label:                'Agroclima - Sorriso / MT',
+    cidade:               'Sorriso',
+    estado:               'MT',
+    latitude:             -12.5425,
+    longitude:            -55.7211,
+    tipoArea:             'AREA_RURAL',
+    tipoVisibilidade:     'PRIVADA',
+    nivelVulnerabilidade: 68,
+  },
+];
 
 const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: 'todos',    label: 'TODOS' },
@@ -49,11 +172,22 @@ const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: 'inativos', label: 'INATIVOS' },
 ];
 
-const CLIENT_TYPES: ClientType[] = ['Governo / Defesa Civil', 'ONG'];
+const TIPO_AREA_OPTIONS: { value: TipoArea; label: string }[] = [
+  { value: 'PONTE',               label: 'Ponte' },
+  { value: 'ENCOSTA',             label: 'Encosta' },
+  { value: 'AREA_RURAL',          label: 'Área rural' },
+  { value: 'COMUNIDADE',          label: 'Comunidade' },
+  { value: 'PROPRIEDADE_PRIVADA', label: 'Propriedade privada' },
+  { value: 'REGIAO_RIBEIRINHA',   label: 'Região ribeirinha' },
+  { value: 'AREA_URBANA',         label: 'Área urbana' },
+  { value: 'OUTRA',               label: 'Outra' },
+];
 
-const EMPTY_FORM: FormState = {
-  nome: '', cidade: '', estado: '', tipoCliente: '', descricao: '', ativo: true,
-};
+const TIPO_VIS_OPTIONS: { value: TipoVisibilidade; label: string }[] = [
+  { value: 'PRIVADA',          label: 'Privada' },
+  { value: 'INSTITUCIONAL',    label: 'Institucional' },
+  { value: 'AGREGADA_PUBLICA', label: 'Agregada pública' },
+];
 
 const TIPO_AREA_LABEL: Record<string, string> = {
   AREA_URBANA:         'Área Urbana',
@@ -63,12 +197,38 @@ const TIPO_AREA_LABEL: Record<string, string> = {
   COMUNIDADE:          'Comunidade',
   PONTE:               'Ponte',
   PROPRIEDADE_PRIVADA: 'Prop. Privada',
+  OUTRA:               'Outra',
+};
+
+const TIPO_AREA_VALUES = TIPO_AREA_OPTIONS.map((o) => o.value);
+const TIPO_VIS_VALUES  = TIPO_VIS_OPTIONS.map((o) => o.value);
+
+const EMPTY_FORM: FormState = {
+  idCliente:        0,
+  nome:             '',
+  cidade:           '',
+  estado:           '',
+  latitude:         '',
+  longitude:        '',
+  tipoArea:         '',
+  vulnProfile:      '',
+  vulnValue:        0,
+  tipoVisibilidade: '',
 };
 
 /* ── Helpers ─────────────────────────────────────────── */
 
-// nivelVulnerabilidade is not explicitly in the Regiao type (index sig returns unknown).
-// This guard narrows it to number | undefined safely.
+function closestProfile(value: number): VulnProfile {
+  return VULN_PROFILES.reduce<typeof VULN_PROFILES[0]>(
+    (best, p) => Math.abs(p.numericValue - value) < Math.abs(best.numericValue - value) ? p : best,
+    VULN_PROFILES[0],
+  ).value;
+}
+
+function presetNome(label: string): string {
+  return label.replace(/ \/ [A-Z]{2}$/, '');
+}
+
 function getVuln(r: RegiaoReadModel): number | undefined {
   const v = r.raw?.nivelVulnerabilidade;
   return typeof v === 'number' ? v : undefined;
@@ -82,8 +242,8 @@ function vulnColor(score: number): string {
 }
 
 function fmtTipoArea(r: RegiaoReadModel): string {
-  const v = r.raw?.tipoArea;   // tipoArea is explicitly typed in Regiao
-  if (!v) return '—';
+  const v = r.raw?.tipoArea;
+  if (!v || typeof v !== 'string') return '—';
   return TIPO_AREA_LABEL[v] ?? v;
 }
 
@@ -99,57 +259,82 @@ function getStatus(r: RegiaoReadModel): 'Ativo' | 'Inativo' | undefined {
   return undefined;
 }
 
+function norm(v?: string): string {
+  return v?.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() ?? '';
+}
+
+function safeIdCliente(raw: RegiaoReadModel['raw']): number {
+  const v = raw?.idCliente;
+  return typeof v === 'number' && v > 0 ? v : 0;
+}
+
+function safeTipoArea(raw: RegiaoReadModel['raw']): TipoArea | '' {
+  const v = raw?.tipoArea;
+  if (typeof v === 'string' && (TIPO_AREA_VALUES as string[]).includes(v)) return v as TipoArea;
+  return '';
+}
+
+function safeTipoVis(raw: RegiaoReadModel['raw']): TipoVisibilidade | '' {
+  const v = raw?.tipoVisibilidade;
+  if (typeof v === 'string' && (TIPO_VIS_VALUES as string[]).includes(v)) return v as TipoVisibilidade;
+  return '';
+}
+
 function buildPayload(form: FormState): RegiaoCreateRequest {
   return {
-    nome:       form.nome.trim(),
-    cidade:     form.cidade.trim(),
-    estado:     form.estado.trim().toUpperCase(),
-    tipoCliente: form.tipoCliente,
-    descricao:  form.descricao.trim() || undefined,
-    ativo:      form.ativo,
+    idCliente:            form.idCliente,
+    nome:                 form.nome.trim(),
+    cidade:               form.cidade.trim(),
+    estado:               form.estado.trim().toUpperCase(),
+    latitude:             parseFloat(form.latitude),
+    longitude:            parseFloat(form.longitude),
+    tipoArea:             form.tipoArea as TipoArea,
+    nivelVulnerabilidade: form.vulnValue,
+    tipoVisibilidade:     form.tipoVisibilidade as TipoVisibilidade,
   };
 }
 
 function validateForm(form: FormState): string | null {
-  if (form.nome.trim().length < 3)    return 'Nome deve ter pelo menos 3 caracteres.';
-  if (form.cidade.trim().length < 2)  return 'Informe a cidade.';
-  if (!form.estado.trim())            return 'Informe o estado (UF).';
-  if (form.estado.trim().length !== 2) return 'Estado deve ter 2 letras (UF).';
-  if (!form.tipoCliente)              return 'Selecione o tipo de cliente.';
+  if (form.idCliente <= 0)               return 'Selecione um cliente.';
+  if (form.nome.trim().length < 3)       return 'Nome deve ter pelo menos 3 caracteres.';
+  if (form.cidade.trim().length < 2)     return 'Informe a cidade.';
+  if (form.estado.trim().length !== 2)   return 'UF deve ter exatamente 2 letras.';
+  if (!form.tipoArea)                    return 'Selecione o tipo de área.';
+  if (!form.vulnProfile)                 return 'Selecione o perfil de vulnerabilidade.';
+  if (form.latitude.trim() === '')       return 'Informe a latitude.';
+  const lat = parseFloat(form.latitude);
+  if (isNaN(lat) || lat < -90 || lat > 90)   return 'Latitude deve estar entre -90 e 90.';
+  if (form.longitude.trim() === '')      return 'Informe a longitude.';
+  const lng = parseFloat(form.longitude);
+  if (isNaN(lng) || lng < -180 || lng > 180) return 'Longitude deve estar entre -180 e 180.';
+  if (!form.tipoVisibilidade)            return 'Selecione a visibilidade.';
   return null;
-}
-
-function normalizeClient(v?: string): ClientType | '' {
-  if (v === 'Governo / Defesa Civil' || v === 'ONG') return v;
-  const n = v?.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() ?? '';
-  if (n.includes('governo') || n.includes('defesa')) return 'Governo / Defesa Civil';
-  if (n.includes('ong')) return 'ONG';
-  return '';
-}
-
-function norm(v?: string): string {
-  return v?.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() ?? '';
 }
 
 /* ── Screen ──────────────────────────────────────────── */
 
 export default function GerenciarRegioesScreen() {
-  const [regioes, setRegioes]       = useState<RegiaoReadModel[]>([]);
-  const [form, setForm]             = useState<FormState>(EMPTY_FORM);
-  const [editing, setEditing]       = useState<RegiaoReadModel | null>(null);
-  const [formOpen, setFormOpen]     = useState(false);
-  const [isLoading, setIsLoading]   = useState(true);
-  const [isSaving, setIsSaving]     = useState(false);
-  const [deletingId, setDeletingId] = useState<number | string | null>(null);
-  const [error, setError]           = useState<string | null>(null);
-  const [validation, setValidation] = useState<string | null>(null);
-  const [feedback, setFeedback]     = useState<Feedback | null>(null);
-  const [search, setSearch]         = useState('');
-  const [listFilter, setListFilter] = useState<ListFilter>('todos');
-  const { isDesktop }               = useResponsiveLayout();
+  const [regioes, setRegioes]                 = useState<RegiaoReadModel[]>([]);
+  const [clientes, setClientes]               = useState<Cliente[]>([]);
+  const [clientesLoading, setClientesLoading] = useState(true);
+  const [form, setForm]                       = useState<FormState>(EMPTY_FORM);
+  const [selectedPreset, setSelectedPreset]   = useState<string | null>(null);
+  const [editing, setEditing]                 = useState<RegiaoReadModel | null>(null);
+  const [formOpen, setFormOpen]               = useState(false);
+  const [isLoading, setIsLoading]             = useState(true);
+  const [isSaving, setIsSaving]               = useState(false);
+  const [deletingId, setDeletingId]           = useState<number | string | null>(null);
+  const [deleteTarget, setDeleteTarget]       = useState<RegiaoReadModel | null>(null);
+  const [error, setError]                     = useState<string | null>(null);
+  const [validation, setValidation]           = useState<string | null>(null);
+  const [feedback, setFeedback]               = useState<Feedback | null>(null);
+  const [search, setSearch]                   = useState('');
+  const [listFilter, setListFilter]           = useState<ListFilter>('todos');
+  const { isDesktop }                         = useResponsiveLayout();
 
   const formTitle   = editing ? 'Editar Região' : 'Nova Região';
   const submitLabel = isSaving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar região';
+  const isPresetActive = selectedPreset !== null && selectedPreset !== MANUAL_KEY;
 
   const adminStats = useMemo(() => ({
     total:    regioes.length,
@@ -188,11 +373,46 @@ export default function GerenciarRegioesScreen() {
     }
   }, []);
 
-  useEffect(() => { void loadRegioes(); }, [loadRegioes]);
+  const loadClientes = useCallback(async () => {
+    setClientesLoading(true);
+    try {
+      setClientes(await listarClientes());
+    } catch {
+      setClientes([]);
+    } finally {
+      setClientesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRegioes();
+    void loadClientes();
+  }, [loadRegioes, loadClientes]);
+
+  function handlePresetSelect(key: string) {
+    setSelectedPreset(key);
+    if (key === MANUAL_KEY) return;
+    const preset = LOCATION_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+    const profile = closestProfile(preset.nivelVulnerabilidade);
+    setForm((prev) => ({
+      ...prev,
+      cidade:           preset.cidade,
+      estado:           preset.estado,
+      latitude:         String(preset.latitude),
+      longitude:        String(preset.longitude),
+      tipoArea:         preset.tipoArea,
+      tipoVisibilidade: preset.tipoVisibilidade,
+      vulnProfile:      profile,
+      vulnValue:        preset.nivelVulnerabilidade,
+      nome:             prev.nome.trim() === '' ? presetNome(preset.label) : prev.nome,
+    }));
+  }
 
   function openCreate() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSelectedPreset(null);
     setValidation(null);
     setFeedback(null);
     setFormOpen(true);
@@ -200,13 +420,22 @@ export default function GerenciarRegioesScreen() {
 
   function openEdit(r: RegiaoReadModel) {
     setEditing(r);
+    setSelectedPreset(null);
+    const raw   = r.raw;
+    const lat   = typeof raw?.latitude === 'number' ? String(raw.latitude) : '';
+    const lng   = typeof raw?.longitude === 'number' ? String(raw.longitude) : '';
+    const rawVuln = typeof raw?.nivelVulnerabilidade === 'number' ? raw.nivelVulnerabilidade : 0;
     setForm({
-      nome:        r.nome,
-      cidade:      r.cidade ?? '',
-      estado:      r.estado ?? '',
-      tipoCliente: normalizeClient(r.tipoCliente),
-      descricao:   r.descricao ?? '',
-      ativo:       r.ativo ?? true,
+      idCliente:        safeIdCliente(raw),
+      nome:             r.nome,
+      cidade:           r.cidade ?? '',
+      estado:           r.estado ?? '',
+      latitude:         lat,
+      longitude:        lng,
+      tipoArea:         safeTipoArea(raw),
+      vulnProfile:      rawVuln > 0 ? closestProfile(rawVuln) : '',
+      vulnValue:        rawVuln,
+      tipoVisibilidade: safeTipoVis(raw),
     });
     setValidation(null);
     setFeedback(null);
@@ -216,6 +445,7 @@ export default function GerenciarRegioesScreen() {
   function closeForm() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSelectedPreset(null);
     setValidation(null);
     setFormOpen(false);
   }
@@ -245,22 +475,17 @@ export default function GerenciarRegioesScreen() {
   }
 
   function confirmDelete(r: RegiaoReadModel) {
-    Alert.alert(
-      'Excluir região',
-      `Deseja excluir "${r.nome}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => { void handleDelete(r); } },
-      ],
-    );
+    setDeleteTarget(r);
   }
 
   async function handleDelete(r: RegiaoReadModel) {
+    setDeleteTarget(null);
     setDeletingId(r.id);
     setFeedback(null);
     try {
       await deleteRegiao(r.id);
-      setFeedback({ ok: true, msg: 'Região excluída com sucesso.' });
+      setFeedback({ ok: true, msg: `"${r.nome}" foi excluída.` });
+      setListFilter('todos');
       await loadRegioes(false);
     } catch (e) {
       setFeedback({ ok: false, msg: `Não foi possível excluir. ${getApiErrorMessage(e)}` });
@@ -318,7 +543,7 @@ export default function GerenciarRegioesScreen() {
                     onChangeText={setSearch}
                     placeholder="Buscar por nome ou cidade"
                     placeholderTextColor="#9CA3AF"
-                    style={styles.searchInput}
+                    style={[styles.searchInput, noOutline]}
                     clearButtonMode="while-editing"
                   />
                 </View>
@@ -346,7 +571,7 @@ export default function GerenciarRegioesScreen() {
                     onChangeText={setSearch}
                     placeholder="Buscar por nome ou cidade"
                     placeholderTextColor="#9CA3AF"
-                    style={styles.searchInput}
+                    style={[styles.searchInput, noOutline]}
                     clearButtonMode="while-editing"
                   />
                 </View>
@@ -395,18 +620,130 @@ export default function GerenciarRegioesScreen() {
                 variant="elevated"
                 style={isDesktop ? styles.formCard : undefined}>
                 <View style={styles.form}>
+
+                  {/* Validation error */}
                   {validation ? (
                     <View style={styles.validationMsg}>
                       <Text style={styles.validationText}>{validation}</Text>
                     </View>
                   ) : null}
 
+                  {/* ── 1. CLIENTE ─────────────────────── */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Cliente *</Text>
+                    {clientesLoading ? (
+                      <Text style={styles.fieldHint}>Carregando clientes...</Text>
+                    ) : clientes.length === 0 ? (
+                      <View style={styles.noClienteMsg}>
+                        <Text style={styles.noClienteText}>
+                          Cadastre um cliente antes de criar regiões.
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.chipRow}>
+                        {clientes.map((c) => {
+                          const cid   = c.idCliente ?? 0;
+                          const label = c.nome ?? `Cliente ${cid}`;
+                          return (
+                            <FilterChip
+                              key={cid}
+                              label={label}
+                              selected={form.idCliente === cid}
+                              onPress={() => setForm((p) => ({ ...p, idCliente: cid }))}
+                            />
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* ── 2. NOME ────────────────────────── */}
                   <FormField
                     label="Nome da região *"
                     value={form.nome}
                     onChange={(v) => setForm((p) => ({ ...p, nome: v }))}
                     placeholder="Ex.: Região Ribeirinha Norte"
                   />
+
+                  {/* ── 3. LOCAL MONITORADO ────────────── */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Local monitorado</Text>
+                    <View style={styles.chipRow}>
+                      {LOCATION_PRESETS.map((p) => (
+                        <FilterChip
+                          key={p.key}
+                          label={p.label}
+                          selected={selectedPreset === p.key}
+                          onPress={() => handlePresetSelect(p.key)}
+                        />
+                      ))}
+                      <FilterChip
+                        label="Outro / preencher manualmente"
+                        selected={selectedPreset === MANUAL_KEY}
+                        onPress={() => handlePresetSelect(MANUAL_KEY)}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.sectionDivider} />
+
+                  {/* ── 4. PERFIL OPERACIONAL ──────────── */}
+                  <Text style={styles.sectionLabel}>PERFIL OPERACIONAL</Text>
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Tipo de área *</Text>
+                    <View style={styles.chipRow}>
+                      {TIPO_AREA_OPTIONS.map((opt) => (
+                        <FilterChip
+                          key={opt.value}
+                          label={opt.label}
+                          selected={form.tipoArea === opt.value}
+                          onPress={() => setForm((p) => ({ ...p, tipoArea: opt.value }))}
+                        />
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Perfil de vulnerabilidade *</Text>
+                    <View style={styles.chipRow}>
+                      {VULN_PROFILES.map((opt) => (
+                        <FilterChip
+                          key={opt.value}
+                          label={opt.label}
+                          selected={form.vulnProfile === opt.value}
+                          onPress={() => setForm((p) => ({
+                            ...p,
+                            vulnProfile: opt.value,
+                            vulnValue:   opt.numericValue,
+                          }))}
+                        />
+                      ))}
+                    </View>
+                    {form.vulnProfile ? (
+                      <Text style={styles.vulnTechNote}>
+                        Valor técnico enviado: {form.vulnValue}/100
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.sectionDivider} />
+
+                  {/* ── 5. LOCALIZAÇÃO OPERACIONAL ─────── */}
+                  <Text style={styles.sectionLabel}>LOCALIZAÇÃO OPERACIONAL</Text>
+                  <Text style={styles.coordHint}>
+                    As coordenadas são usadas para sincronizar dados climáticos públicos e calcular risco ambiental da região monitorada.
+                  </Text>
+
+                  {isPresetActive ? (
+                    <View style={styles.presetFilledBadge}>
+                      <Text style={styles.presetFilledText}>
+                        Preenchido automaticamente pelo local selecionado. Você pode ajustar se necessário.
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Cidade / UF */}
                   <View style={[styles.formRow, isDesktop && styles.formRowDesktop]}>
                     <FormField
                       label="Cidade *"
@@ -416,7 +753,7 @@ export default function GerenciarRegioesScreen() {
                       style={styles.formFlex}
                     />
                     <FormField
-                      label="Estado (UF) *"
+                      label="UF *"
                       value={form.estado}
                       onChange={(v) => setForm((p) => ({ ...p, estado: v.toUpperCase().slice(0, 2) }))}
                       placeholder="AM"
@@ -426,35 +763,49 @@ export default function GerenciarRegioesScreen() {
                     />
                   </View>
 
+                  {/* Latitude / Longitude */}
+                  <View style={[
+                    styles.formRow,
+                    isDesktop && styles.formRowDesktop,
+                    isPresetActive && styles.formRowDimmed,
+                  ]}>
+                    <FormField
+                      label="Latitude"
+                      value={form.latitude}
+                      onChange={(v) => setForm((p) => ({ ...p, latitude: v }))}
+                      placeholder="Ex.: -3.119028"
+                      keyboardType="numeric"
+                      style={styles.formFlex}
+                    />
+                    <FormField
+                      label="Longitude"
+                      value={form.longitude}
+                      onChange={(v) => setForm((p) => ({ ...p, longitude: v }))}
+                      placeholder="Ex.: -60.021731"
+                      keyboardType="numeric"
+                      style={styles.formFlex}
+                    />
+                  </View>
+
+                  <View style={styles.sectionDivider} />
+
+                  {/* ── 6. VISIBILIDADE ────────────────── */}
+                  <Text style={styles.sectionLabel}>VISIBILIDADE</Text>
+
                   <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>Tipo de cliente *</Text>
                     <View style={styles.chipRow}>
-                      {CLIENT_TYPES.map((t) => (
+                      {TIPO_VIS_OPTIONS.map((opt) => (
                         <FilterChip
-                          key={t} label={t}
-                          selected={form.tipoCliente === t}
-                          onPress={() => setForm((p) => ({ ...p, tipoCliente: t }))}
+                          key={opt.value}
+                          label={opt.label}
+                          selected={form.tipoVisibilidade === opt.value}
+                          onPress={() => setForm((p) => ({ ...p, tipoVisibilidade: opt.value }))}
                         />
                       ))}
                     </View>
                   </View>
 
-                  <FormField
-                    label="Descrição"
-                    value={form.descricao}
-                    onChange={(v) => setForm((p) => ({ ...p, descricao: v }))}
-                    placeholder="Contexto ambiental ou climático da região"
-                    multiline
-                  />
-
-                  <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>Status</Text>
-                    <View style={styles.chipRow}>
-                      <FilterChip label="Ativa"   selected={form.ativo}  onPress={() => setForm((p) => ({ ...p, ativo: true }))} />
-                      <FilterChip label="Inativa" selected={!form.ativo} onPress={() => setForm((p) => ({ ...p, ativo: false }))} />
-                    </View>
-                  </View>
-
+                  {/* Form actions */}
                   <View style={styles.formActions}>
                     <AppButton
                       label={submitLabel}
@@ -470,6 +821,7 @@ export default function GerenciarRegioesScreen() {
                       style={styles.actionBtn}
                     />
                   </View>
+
                 </View>
               </AppCard>
             ) : null}
@@ -585,6 +937,40 @@ export default function GerenciarRegioesScreen() {
 
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* ── Delete confirmation modal ─────────────── */}
+        <Modal
+          visible={deleteTarget !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDeleteTarget(null)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <View style={styles.modalIconWrap}>
+                <Text style={styles.modalIcon}>⚠</Text>
+              </View>
+              <Text style={styles.modalTitle}>Excluir região</Text>
+              <Text style={styles.modalBody}>
+                {'Deseja excluir '}
+                <Text style={styles.modalBold}>{deleteTarget?.nome}</Text>
+                {'?\n\nEsta ação não pode ser desfeita.'}
+              </Text>
+              <View style={styles.modalActions}>
+                <Pressable
+                  onPress={() => setDeleteTarget(null)}
+                  style={({ hovered }) => [styles.modalCancelBtn, hovered && styles.modalCancelBtnHover]}>
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => deleteTarget && void handleDelete(deleteTarget)}
+                  style={({ hovered }) => [styles.modalConfirmBtn, hovered && styles.modalConfirmBtnHover]}>
+                  <Text style={styles.modalConfirmText}>Excluir</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </AppShell>
   );
@@ -598,12 +984,14 @@ function VulnScore({ score }: { score?: number }) {
 }
 
 function FormField({
-  label, value, onChange, placeholder, multiline, autoCapitalize, maxLength, style,
+  label, value, onChange, placeholder, multiline, autoCapitalize, maxLength, keyboardType, style,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; multiline?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  maxLength?: number; style?: object;
+  maxLength?: number;
+  keyboardType?: 'default' | 'numeric' | 'decimal-pad' | 'email-address';
+  style?: object;
 }) {
   return (
     <View style={[ff.group, style]}>
@@ -616,7 +1004,8 @@ function FormField({
         multiline={multiline}
         autoCapitalize={autoCapitalize}
         maxLength={maxLength}
-        style={[ff.input, multiline && ff.multiline]}
+        keyboardType={keyboardType}
+        style={[ff.input, multiline && ff.multiline, noOutline]}
       />
     </View>
   );
@@ -680,18 +1069,65 @@ const styles = StyleSheet.create({
   form:           { gap: spacing.md },
   formRow:        { gap: spacing.md },
   formRowDesktop: { flexDirection: 'row' },
+  formRowDimmed:  { opacity: 0.65 },
   formFlex:       { flex: 1 },
   formShort:      { width: 100 },
-  fieldGroup:     { gap: spacing.xs },
-  fieldLabel:     { color: colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  chipRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+
+  fieldGroup:  { gap: spacing.xs },
+  fieldLabel:  { color: colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  fieldHint:   { color: colors.textMuted, fontSize: 13 },
+  chipRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+
+  sectionDivider: {
+    borderBottomColor: '#EEF0F4',
+    borderBottomWidth: 1,
+    marginVertical: 2,
+  },
+  sectionLabel: {
+    color: '#3F51B5',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+
+  coordHint: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontStyle: 'italic',
+    lineHeight: 17,
+  },
+  presetFilledBadge: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C5CAE9',
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  presetFilledText: {
+    color: '#3F51B5',
+    fontSize: 12,
+  },
+  vulnTechNote: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+
   formActions:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   validationMsg:  {
     backgroundColor: '#FFF5F5', borderColor: '#FCA5A5',
     borderRadius: 6, borderWidth: 1, padding: 10,
   },
   validationText: { color: '#D32F2F', fontSize: 13, fontWeight: '600' },
-  actionBtn:      { flex: 1 },
+  noClienteMsg: {
+    backgroundColor: '#FFFBEB', borderColor: '#FCD34D',
+    borderRadius: 6, borderWidth: 1, padding: 10,
+  },
+  noClienteText: { color: '#92400E', fontSize: 13 },
+  actionBtn:     { flex: 1 },
 
   tableContainer: {
     backgroundColor: colors.surface,
@@ -730,18 +1166,18 @@ const styles = StyleSheet.create({
     top: 0, width: 3,
   },
 
-  colNome:   { flex: 2, paddingHorizontal: 4 },
-  colArea:   { width: 120, paddingHorizontal: 4 },
-  colVuln:   { width: 60,  paddingHorizontal: 4 },
-  colStatus: { width: 80,  paddingHorizontal: 4 },
-  colAcoes:  { width: 160, paddingHorizontal: 4 },
-  actionsRow:{ flexDirection: 'row', gap: 8 },
+  colNome:    { flex: 2, paddingHorizontal: 4 },
+  colArea:    { width: 120, paddingHorizontal: 4 },
+  colVuln:    { width: 60,  paddingHorizontal: 4 },
+  colStatus:  { width: 80,  paddingHorizontal: 4 },
+  colAcoes:   { width: 160, paddingHorizontal: 4 },
+  actionsRow: { flexDirection: 'row', gap: 8 },
 
-  rowNome:     { color: colors.neutralText, fontSize: 13, fontWeight: '600' },
-  rowNomeMuted:{ color: colors.mutedText },
-  rowSub:      { color: colors.mutedText, fontSize: 11, marginTop: 1 },
-  rowCell:     { color: colors.mutedText, fontSize: 13 },
-  dash:        { color: colors.mutedText, fontSize: 13 },
+  rowNome:      { color: colors.neutralText, fontSize: 13, fontWeight: '600' },
+  rowNomeMuted: { color: colors.mutedText },
+  rowSub:       { color: colors.mutedText, fontSize: 11, marginTop: 1 },
+  rowCell:      { color: colors.mutedText, fontSize: 13 },
+  dash:         { color: colors.mutedText, fontSize: 13 },
 
   editBtn: {
     borderColor: '#C5CAE9', borderRadius: 4, borderWidth: 1,
@@ -766,9 +1202,9 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   mobileCardInactive: { backgroundColor: '#F8F9FA' },
-  mobileCardTop:    { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  mobileCardMeta:   { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  mobileCardActions:{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
+  mobileCardTop:     { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+  mobileCardMeta:    { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  mobileCardActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
   tipoChip: {
     backgroundColor: '#EEF2FF',
     borderRadius: 99,
@@ -778,6 +1214,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
+
+  modalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  modalBox: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    gap: 10,
+    maxWidth: 400,
+    paddingHorizontal: 28,
+    paddingVertical: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    width: '90%',
+  },
+  modalIconWrap: {
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    borderRadius: 99,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  modalIcon:    { color: '#D32F2F', fontSize: 24 },
+  modalTitle:   { color: '#111827', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  modalBody:    { color: '#4B5563', fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  modalBold:    { color: '#111827', fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 6, width: '100%' },
+  modalCancelBtn: {
+    alignItems: 'center',
+    borderColor: '#DDE2EA',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    paddingVertical: 11,
+  },
+  modalCancelBtnHover: { backgroundColor: '#F4F5F7' },
+  modalCancelText:     { color: '#374151', fontSize: 14, fontWeight: '600' },
+  modalConfirmBtn: {
+    alignItems: 'center',
+    backgroundColor: '#D32F2F',
+    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 11,
+  },
+  modalConfirmBtnHover: { backgroundColor: '#B71C1C' },
+  modalConfirmText:     { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });
 
 const ff = StyleSheet.create({

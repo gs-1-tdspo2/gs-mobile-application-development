@@ -1,8 +1,24 @@
 import { RiscoAtual, RiscoNivel } from '@/types/risco';
 
+export type TipoArea =
+  | 'PONTE'
+  | 'ENCOSTA'
+  | 'AREA_RURAL'
+  | 'COMUNIDADE'
+  | 'PROPRIEDADE_PRIVADA'
+  | 'REGIAO_RIBEIRINHA'
+  | 'AREA_URBANA'
+  | 'OUTRA';
+
+export type TipoVisibilidade =
+  | 'PRIVADA'
+  | 'INSTITUCIONAL'
+  | 'AGREGADA_PUBLICA';
+
 export type Regiao = {
   id: number | string;
   idRegiao?: number | string;
+  idCliente?: number;
   nome: string;
   name?: string;
   cidade?: string;
@@ -19,6 +35,7 @@ export type Regiao = {
   description?: string;
   latitude?: number;
   longitude?: number;
+  nivelVulnerabilidade?: number;
   ativo?: boolean;
   stAtivo?: string;
   status?: string;
@@ -48,15 +65,15 @@ export type RegiaoReadModel = {
 };
 
 export type RegiaoCreateRequest = {
+  idCliente: number;
   nome: string;
   cidade: string;
-  municipio?: string;
-  estado?: string;
-  tipoCliente: string;
-  descricao?: string;
-  ativo?: boolean;
+  estado: string;
+  latitude: number;
+  longitude: number;
+  tipoArea: TipoArea;
+  nivelVulnerabilidade: number;
+  tipoVisibilidade: TipoVisibilidade;
 };
 
-export type RegiaoUpdateRequest = Partial<RegiaoCreateRequest> & {
-  ativo?: boolean;
-};
+export type RegiaoUpdateRequest = RegiaoCreateRequest;

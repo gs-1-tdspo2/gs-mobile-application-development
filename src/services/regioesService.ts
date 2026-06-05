@@ -122,15 +122,11 @@ function normalizeLeitura(raw: Leitura): LeituraReadModel {
 }
 
 function normalizePayload(payload: RegiaoCreateRequest | RegiaoUpdateRequest) {
-  const normalizedEstado = payload.estado?.trim().toUpperCase();
-
   return {
     ...payload,
     nome: payload.nome?.trim(),
     cidade: payload.cidade?.trim(),
-    estado: normalizedEstado,
-    tipoCliente: payload.tipoCliente?.trim(),
-    descricao: payload.descricao?.trim(),
+    estado: payload.estado?.trim().toUpperCase(),
   };
 }
 
