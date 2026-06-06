@@ -1,50 +1,129 @@
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { Card } from '@components/ui';
+import { Colors } from '@constants/colors';
+import { FontSize, Spacing, Radius } from '@constants/design';
+import type { ReactNode } from 'react';
 
-type Props = {
+interface Props {
   title: string;
   subtitle?: string;
-  children: React.ReactNode;
-  style?: ViewStyle;
-};
+  metric?: string;
+  accentColor?: string;
+  filterSlot?: ReactNode;
+  loading?: boolean;
+  error?: string | null;
+  empty?: boolean;
+  emptyMessage?: string;
+  children?: ReactNode;
+}
 
-export function ChartCard({ title, subtitle, children, style }: Props) {
+export function ChartCard({
+  title,
+  subtitle,
+  metric,
+  accentColor,
+  filterSlot,
+  loading,
+  error,
+  empty,
+  emptyMessage = 'Sem dados disponíveis.',
+  children,
+}: Props) {
   return (
-    <View style={[cc.card, style]}>
-      <View style={cc.header}>
-        <Text style={cc.title}>{title}</Text>
-        {subtitle ? <Text style={cc.subtitle}>{subtitle}</Text> : null}
+    <Card style={[styles.card, accentColor ? { borderLeftColor: accentColor, borderLeftWidth: 3 } : null]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+        {metric ? (
+          <View style={styles.metricBadge}>
+            <Text style={styles.metricText}>{metric}</Text>
+          </View>
+        ) : null}
       </View>
-      <View style={cc.body}>{children}</View>
-    </View>
+
+      {/* Inline filter toolbar */}
+      {filterSlot ? <View style={styles.filterSlot}>{filterSlot}</View> : null}
+
+      {/* Content states */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.primary} size="small" />
+          <Text style={styles.stateText}>Carregando...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : empty ? (
+        <View style={styles.center}>
+          <Text style={styles.stateText}>{emptyMessage}</Text>
+        </View>
+      ) : (
+        children
+      )}
+    </Card>
   );
 }
 
-const cc = StyleSheet.create({
+const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#DDE2EA',
-    borderRadius: 8,
-    borderWidth: 1,
-    overflow: 'hidden',
+    marginBottom: Spacing.md,
   },
   header: {
-    borderBottomColor: '#EEF0F4',
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+    columnGap: Spacing.sm,
+  },
+  headerLeft: {
+    flex: 1,
+    rowGap: 3,
   },
   title: {
-    color: '#1F2937',
-    fontSize: 13,
+    fontSize: FontSize.md,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    color: Colors.text,
+    letterSpacing: -0.2,
   },
   subtitle: {
-    color: '#6B7280',
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    lineHeight: 16,
   },
-  body: {
-    padding: 16,
+  metricBadge: {
+    backgroundColor: Colors.background,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  metricText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  filterSlot: {
+    marginBottom: Spacing.sm,
+  },
+  center: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+    rowGap: Spacing.xs,
+  },
+  stateText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: FontSize.sm,
+    color: '#D32F2F',
+    textAlign: 'center',
+    paddingHorizontal: Spacing.md,
   },
 });

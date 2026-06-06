@@ -1,59 +1,41 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import type { BarEntry } from '@utils/chartTransforms';
+import { Colors } from '@constants/colors';
+import { FontSize, Spacing, Radius } from '@constants/design';
 
-export type HBarItem = {
-  label: string;
-  value: number;
-  max?: number;
-  color?: string;
-  subLabel?: string;
-};
-
-type Props = {
-  data: HBarItem[];
-  defaultColor?: string;
+interface Props {
+  data: BarEntry[];
   showValues?: boolean;
-  valueUnit?: string;
-  emptyText?: string;
-  labelWidth?: number;
-};
+}
 
-export function HorizontalBarChart({
-  data,
-  defaultColor = '#3F51B5',
-  showValues = true,
-  valueUnit,
-  emptyText = 'Sem dados',
-  labelWidth = 100,
-}: Props) {
-  const { width: screenW } = useWindowDimensions();
-  const maxLabelW = Math.floor(screenW * 0.32);
-  const effectiveLabelW = Math.min(labelWidth, maxLabelW);
+export function HorizontalBarChart({ data, showValues = true }: Props) {
+  const activeData = data.filter(d => d.value > 0);
+  if (activeData.length === 0) return null;
 
-  if (data.length === 0) {
-    return <Text style={hb.empty}>{emptyText}</Text>;
-  }
-  const domainMax = Math.max(...data.map((d) => d.max ?? d.value), 1);
+  const maxVal = Math.max(...activeData.map(d => d.maxValue ?? d.value), 1);
 
   return (
-    <View style={hb.root}>
-      {data.map((item, i) => {
-        const pct = Math.min((item.value / domainMax) * 100, 100);
-        const col = item.color ?? defaultColor;
+    <View style={styles.wrapper}>
+      {activeData.map(entry => {
+        const pct = maxVal > 0 ? (entry.value / maxVal) * 100 : 0;
         return (
-          <View key={i} style={hb.row}>
-            <View style={[hb.labelCol, { width: effectiveLabelW }]}>
-              <Text style={hb.label} numberOfLines={1}>{item.label}</Text>
-              {item.subLabel ? (
-                <Text style={hb.subLabel} numberOfLines={1}>{item.subLabel}</Text>
+          <View key={entry.key} style={styles.row}>
+            <Text style={styles.label} numberOfLines={2}>{entry.label}</Text>
+            <View style={styles.trackArea}>
+              <View style={styles.track}>
+                <View
+                  style={[
+                    styles.bar,
+                    { width: `${Math.max(pct, 3)}%` as unknown as number, backgroundColor: entry.color },
+                  ]}
+                />
+              </View>
+              {entry.sublabel ? (
+                <Text style={styles.sublabel}>{entry.sublabel}</Text>
               ) : null}
             </View>
-            <View style={hb.track}>
-              <View style={[hb.fill, { width: `${pct}%` as `${number}%`, backgroundColor: col }]} />
-            </View>
             {showValues ? (
-              <Text style={[hb.value, { color: col }]}>
-                {item.value}{valueUnit ?? ''}
-              </Text>
+              <Text style={[styles.value, { color: entry.color }]}>{entry.value}</Text>
             ) : null}
           </View>
         );
@@ -62,20 +44,46 @@ export function HorizontalBarChart({
   );
 }
 
-const hb = StyleSheet.create({
-  root:     { gap: 10 },
-  row:      { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  labelCol: { gap: 1 },
-  label:    { color: '#374151', fontSize: 12, fontWeight: '500' },
-  subLabel: { color: '#9CA3AF', fontSize: 10 },
-  track: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 99,
+const styles = StyleSheet.create({
+  wrapper: {
+    rowGap: Spacing.sm,
+    paddingBottom: Spacing.xs,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: Spacing.sm,
+    minHeight: 36,
+  },
+  label: {
+    fontSize: FontSize.sm,
+    fontWeight: '500',
+    color: Colors.text,
+    width: 118,
+    lineHeight: 17,
+  },
+  trackArea: {
     flex: 1,
-    height: 8,
+    rowGap: 2,
+  },
+  track: {
+    height: 28,
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
     overflow: 'hidden',
   },
-  fill:  { borderRadius: 99, height: 8 },
-  value: { fontSize: 12, fontWeight: '700', minWidth: 32, textAlign: 'right' },
-  empty: { color: '#9CA3AF', fontSize: 13, paddingVertical: 16, textAlign: 'center' },
+  bar: {
+    height: '100%',
+    borderRadius: Radius.sm,
+  },
+  sublabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  value: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    minWidth: 28,
+    textAlign: 'right',
+  },
 });

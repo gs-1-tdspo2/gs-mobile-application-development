@@ -1,7 +1,8 @@
-import { webGet } from '@/services/api';
-import { Cliente } from '@/types/cliente';
+import { api } from './api';
+import { API_ENDPOINTS } from '@constants/api';
+import type { Cliente } from '@/types';
 
-export async function listarClientes(): Promise<Cliente[]> {
-  const data = await webGet<unknown>('/api/clientes');
-  return Array.isArray(data) ? (data as Cliente[]) : [];
+export async function fetchClientes(): Promise<Cliente[]> {
+  const result = await api.get<Cliente[] | undefined>(API_ENDPOINTS.CLIENTES);
+  return result ?? [];
 }

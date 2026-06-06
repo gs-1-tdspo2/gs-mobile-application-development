@@ -31,27 +31,10 @@ yarn-error.*
 *.pem
 
 # local env files
-.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
-
-# local agent/tooling files
-.claude/
-.codex/
-.cursor/
-.windsurf/
-.mcp/
-.mcp.json
-.claude.json
-AGENTS.md
-agents.md
-CLAUDE.md
-claude.md
-skills-lock.json
-
-example
 
 # generated native folders
 /ios
