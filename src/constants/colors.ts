@@ -1,27 +1,29 @@
-export const colors = {
+export const Colors = {
   primary: '#3F51B5',
-  primaryBase: '#24389C',
   primaryDark: '#3347A8',
-  primaryLight: '#EEF2FF',
-  primaryAccent: '#5A6FD6',
-  deepGreen: '#3347A8',
-  teal: '#5A6FD6',
-  blue: '#3F51B5',
-  offWhite: '#F8F9FB',
-  warningOrange: '#F59E0B',
-  highRisk: '#F97316',
-  criticalRed: '#BA1A1A',
-  neutralText: '#191C1E',
-  mutedText: '#454652',
-  textMuted: '#757684',
-  border: '#E5E7EB',
-  borderStrong: '#C5C5D4',
+  primaryLight: '#5A6FD6',
+
   background: '#F4F5F7',
-  surfaceContainer: '#F3F4F6',
-  surface: '#FFFFFF',
-  lowRiskBackground: '#DCFCE7',
-  moderateRiskBackground: '#FEF3C7',
-  highRiskBackground: '#FFEDD5',
-  criticalBackground: '#FFDAD6',
-  criticalSoftBackground: '#FFF5F5',
+  card: '#FFFFFF',
+
+  text: '#1F2937',
+  textMuted: '#6B7280',
+  border: '#DDE2EA',
 } as const;
+
+// Keys match backend NivelRisco enum exactly
+export const RiskColors = {
+  CRITICO: '#D32F2F',
+  ALTO: '#EF6C00',
+  MODERADO: '#F9A825',
+  BAIXO: '#2E7D32',
+} as const;
+
+export const RiskBackgrounds = {
+  CRITICO: '#FFEBEE',
+  ALTO: '#FFF3E0',
+  MODERADO: '#FFFDE7',
+  BAIXO: '#E8F5E9',
+} as const;
+
+export type NivelRiscoColor = keyof typeof RiskColors;
