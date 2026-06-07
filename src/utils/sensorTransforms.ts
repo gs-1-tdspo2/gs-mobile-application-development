@@ -92,11 +92,11 @@ function buildSeries(
   let available = false;
 
   for (const r of sorted) {
-    if (!r.dtLeit) continue; // skip records with missing timestamp
+    if (!r.dtLeitura) continue;
     const v = readField(r as unknown as Record<string, unknown>, candidates);
     if (v !== null) {
       available = true;
-      points.push({ label: formatLeituraTimestamp(r.dtLeit), value: v });
+      points.push({ label: formatLeituraTimestamp(r.dtLeitura), value: v });
     }
   }
 
@@ -121,30 +121,34 @@ function buildSeries(
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function extractSensorAnalysis(leituras: LeituraIot[]): SensorAnalysis {
-  if (leituras.length === 0) {
-    const empty = (label: string, unit: string): SensorSeries => ({
-      unit, label, available: false, points: [],
-      latestValue: null, latestLabel: null, min: null, max: null,
-    });
-    return {
-      totalLeituras: 0,
-      rangeLabel: null,
-      agua: { distancia: empty('Distância à água', 'cm'), nivel: empty('Nível de água', '%') },
-      particulado: { pm25: empty('PM2.5', 'µg/m³'), pm10: empty('PM10', 'µg/m³') },
-      pressao: empty('Pressão atmosférica', 'hPa'),
-      movimento: { inclinacao: empty('Inclinação', '°'), vibracao: empty('Vibração', 'índice') },
-    };
-  }
+  const empty = (label: string, unit: string): SensorSeries => ({
+    unit, label, available: false, points: [],
+    latestValue: null, latestLabel: null, min: null, max: null,
+  });
+  const emptyResult = (): SensorAnalysis => ({
+    totalLeituras: 0,
+    rangeLabel: null,
+    agua: { distancia: empty('Distância à água', 'cm'), nivel: empty('Nível de água', '%') },
+    particulado: { pm25: empty('PM2.5', 'µg/m³'), pm10: empty('PM10', 'µg/m³') },
+    pressao: empty('Pressão atmosférica', 'hPa'),
+    movimento: { inclinacao: empty('Inclinação', '°'), vibracao: empty('Vibração', 'índice') },
+  });
 
-  // Sort ascending by reading timestamp; records with no/invalid timestamp sort to front
-  const sorted = [...leituras].sort((a, b) => {
-    const ta = new Date(normalizeTimestamp(a.dtLeit)).getTime();
-    const tb = new Date(normalizeTimestamp(b.dtLeit)).getTime();
+  if (leituras.length === 0) return emptyResult();
+
+  // Exclude backend-invalidated readings (stValida === 'N'); accept 'S', undefined, null, Wokwi booleans
+  const valid = leituras.filter(r => r.stValida !== 'N');
+  if (valid.length === 0) return emptyResult();
+
+  // Sort ascending (oldest → newest) using dtRecebidoEm as primary key — more reliable than device-generated dtLeitura
+  const sorted = [...valid].sort((a, b) => {
+    const ta = new Date(normalizeTimestamp(a.dtRecebidoEm ?? a.dtLeitura)).getTime();
+    const tb = new Date(normalizeTimestamp(b.dtRecebidoEm ?? b.dtLeitura)).getTime();
     return (isNaN(ta) ? 0 : ta) - (isNaN(tb) ? 0 : tb);
   });
 
-  const first = sorted[0].dtLeit;
-  const last = sorted[sorted.length - 1].dtLeit;
+  const first = sorted[0].dtLeitura;
+  const last = sorted[sorted.length - 1].dtLeitura;
   let rangeLabel: string | null = null;
   try {
     const fd = new Date(normalizeTimestamp(first));
@@ -157,14 +161,14 @@ export function extractSensorAnalysis(leituras: LeituraIot[]): SensorAnalysis {
   }
 
   return {
-    totalLeituras: sorted.length,
+    totalLeituras: valid.length,
     rangeLabel,
     agua: {
       distancia: buildSeries(sorted,
         ['distanciaAguaCm', 'nrDistanciaAguaCm', 'waterDistanceCm', 'distanciaAgua'],
         'Distância à água', 'cm'),
       nivel: buildSeries(sorted,
-        ['nivelAguaPct', 'nrNivelAguaPct', 'waterLevelPercent', 'nivelAgua', 'nivelAguaPercentual'],
+        ['nivelAguaPercentual', 'nivelAguaPct', 'nrNivelAguaPct', 'waterLevelPercent', 'nivelAgua'],
         'Nível de água', '%'),
     },
     particulado: {

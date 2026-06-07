@@ -103,13 +103,13 @@ export interface LeituraIot {
   idEstacao?: number;              // ID_ESTACAO
   idRegiao?: number;               // ID_REGIAO
   distanciaAguaCm?: number | null; // NR_DISTANCIA_AGUA_CM — HC-SR04, Enchente
-  nivelAguaPct?: number | null;    // NR_NIVEL_AGUA_PCT — HC-SR04, Enchente
+  nivelAguaPercentual?: number | null; // NR_NIVEL_AGUA_PCT — HC-SR04, Enchente
   inclinacaoGraus?: number | null; // NR_INCL_GRAUS — MPU6050, Deslizamento
   vibracao?: number | null;        // NR_VIBRACAO — MPU6050, Deslizamento
   pressaoHpa?: number | null;      // NR_PRESSAO_HPA — BMP180, Tempestade
   pm25?: number | null;            // NR_PM25 — Slider (sim. PMS5003), Qualidade do ar
   pm10?: number | null;            // NR_PM10 — Slider (sim. PMS5003), Qualidade do ar
-  dtLeit: string;                  // DT_LEIT — reading timestamp
+  dtLeitura: string;               // DT_LEIT — reading timestamp
   dtRecebidoEm?: string;           // DT_RECEBIDO_EM
   stValida?: string;               // ST_VALIDA: 'S' | 'N'
 }
@@ -117,7 +117,7 @@ export interface LeituraIot {
 export interface CreateLeituraRequest {
   idEstacao: number;
   distanciaAguaCm?: number;
-  nivelAguaPct?: number;
+  nivelAguaPercentual?: number;
   inclinacaoGraus?: number;
   vibracao?: number;
   pressaoHpa?: number;
