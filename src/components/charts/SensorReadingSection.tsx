@@ -1,54 +1,113 @@
 /**
- * SensorReadingSection — shows latest IoT sensor value + sparkline per series.
+ * SensorReadingSection — KPI card per series with full-width bar chart + timestamp axis.
  * Uses custom React Native View bars (no Skia). Works on iOS, Android, and Web.
+ * Layout reference: dashboard with large value, unit row, bar history, x-axis timestamps.
  */
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Card } from '@components/ui';
 import { Colors } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 import type { SensorSeries } from '@utils/sensorTransforms';
-import { scaledSparklinePoints, formatSensorValue } from '@utils/sensorTransforms';
+import { scaledSparklinePoints } from '@utils/sensorTransforms';
 
-// ─── Mini sparkline ───────────────────────────────────────────────────────────
+// ─── Value formatting ─────────────────────────────────────────────────────────
 
-interface SparklineProps {
-  scaled: number[];
-  color: string;
-  height?: number;
+function displayNumber(value: number | null, unit: string): string {
+  if (value === null) return '—';
+  switch (unit) {
+    case 'hPa':    return value.toFixed(1);
+    case '%':      return value.toFixed(1);
+    case 'cm':     return value.toFixed(1);
+    case 'µg/m³':  return value.toFixed(0);
+    case '°':      return value.toFixed(2);
+    case 'índice': return value.toFixed(3);
+    default:       return String(value);
+  }
 }
 
-function MiniSparkline({ scaled, color, height = 44 }: SparklineProps) {
-  if (scaled.length === 0) return null;
-  const barW = Math.max(3, Math.floor(260 / Math.max(scaled.length, 1)));
+function displayUnit(unit: string): string {
+  switch (unit) {
+    case '%':      return '% de ocupação';
+    case 'cm':     return 'cm do sensor';
+    case 'índice': return 'rad/s acum.';
+    default:       return unit;
+  }
+}
+
+// ─── Bar chart with x-axis timestamps ────────────────────────────────────────
+
+interface BarChartProps {
+  series: SensorSeries;
+  color: string;
+  maxBars?: number;
+}
+
+function BarChart({ series, color, maxBars = 30 }: BarChartProps) {
+  const scaled = scaledSparklinePoints(series, maxBars);
+  if (scaled.length < 2) return null;
+
+  const pts = series.points.slice(-maxBars);
+  const firstLabel = pts[0]?.label ?? '';
+  const lastLabel  = pts[pts.length - 1]?.label ?? '';
+  const midLabel   = pts.length >= 8 ? (pts[Math.floor(pts.length / 2)]?.label ?? '') : '';
+
   return (
-    <View style={[sparkStyles.wrapper, { height }]}>
-      {scaled.map((v, i) => (
-        <View
-          key={i}
-          style={[
-            sparkStyles.bar,
-            {
-              width: barW,
-              height: Math.max(3, v * height),
-              backgroundColor: color,
-              opacity: 0.45 + v * 0.55,
-            },
-          ]}
-        />
-      ))}
+    <View style={chart.container}>
+      {/* Bars */}
+      <View style={chart.chartArea}>
+        {scaled.map((v, i) => (
+          <View
+            key={i}
+            style={[
+              chart.bar,
+              {
+                height: Math.max(4, v * 64),
+                backgroundColor: color,
+                opacity: 0.45 + v * 0.55,
+              },
+            ]}
+          />
+        ))}
+      </View>
+      {/* X-axis timestamps */}
+      <View style={chart.axisRow}>
+        <Text style={chart.axisLabel} numberOfLines={1}>{firstLabel}</Text>
+        {midLabel ? <Text style={chart.axisLabel} numberOfLines={1}>{midLabel}</Text> : null}
+        <Text style={chart.axisLabel} numberOfLines={1}>{lastLabel}</Text>
+      </View>
     </View>
   );
 }
 
-const sparkStyles = StyleSheet.create({
-  wrapper: {
+const chart = StyleSheet.create({
+  container: {
+    marginTop: Spacing.sm,
+  },
+  chartArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    columnGap: 2,
-    overflow: 'hidden',
+    height: 64,
+    gap: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingBottom: 2,
   },
   bar: {
-    borderRadius: 2,
+    flex: 1,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+  axisRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    paddingHorizontal: 1,
+  },
+  axisLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: 0.1,
+    maxWidth: 72,
   },
 });
 
@@ -60,145 +119,131 @@ interface SeriesCardProps {
 }
 
 function SeriesCard({ series, color }: SeriesCardProps) {
-  if (!series.available) {
+  const hasData = series.available && series.points.length > 0;
+
+  if (!hasData) {
     return (
-      <View style={seriesStyles.unavailable}>
-        <Text style={seriesStyles.unavailableField}>{series.label}</Text>
-        <Text style={seriesStyles.unavailableText}>Dado não disponível pela API.</Text>
+      <View style={sc.unavailable}>
+        <Text style={sc.unavailableField}>{series.label.toUpperCase()}</Text>
+        <Text style={sc.unavailableText}>
+          {series.available
+            ? 'Nenhuma leitura registrada para este campo.'
+            : 'Dado não disponível pela API.'}
+        </Text>
       </View>
     );
   }
 
-  if (series.points.length === 0) {
-    return (
-      <View style={seriesStyles.unavailable}>
-        <Text style={seriesStyles.unavailableField}>{series.label}</Text>
-        <Text style={seriesStyles.unavailableText}>Nenhuma leitura registrada para este campo.</Text>
-      </View>
-    );
-  }
-
-  const scaled = scaledSparklinePoints(series, 24);
-  const latestFormatted = formatSensorValue(series.latestValue, series.unit);
-  const minFormatted = formatSensorValue(series.min, series.unit);
-  const maxFormatted = formatSensorValue(series.max, series.unit);
+  const numStr  = displayNumber(series.latestValue, series.unit);
+  const minStr  = displayNumber(series.min, series.unit);
+  const maxStr  = displayNumber(series.max, series.unit);
+  const unitStr = displayUnit(series.unit);
 
   return (
-    <View style={seriesStyles.card}>
-      {/* Label */}
-      <Text style={seriesStyles.seriesLabel}>{series.label}</Text>
+    <View style={[sc.card, { borderTopColor: color }]}>
+      {/* Field name */}
+      <Text style={sc.fieldName}>{series.label.toUpperCase()}</Text>
 
-      {/* Hero value + timestamp */}
-      <View style={seriesStyles.heroRow}>
-        <Text style={[seriesStyles.heroValue, { color }]}>{latestFormatted}</Text>
+      {/* Hero: large number + unit below */}
+      <Text style={[sc.heroValue, { color }]}>{numStr}</Text>
+      <Text style={sc.heroUnit}>{unitStr}</Text>
+
+      {/* Stats row */}
+      <View style={sc.statsRow}>
+        <View style={sc.statItem}>
+          <Text style={sc.statLabel}>MÍN</Text>
+          <Text style={sc.statValue}>{minStr}</Text>
+        </View>
+        <View style={sc.statSep} />
+        <View style={sc.statItem}>
+          <Text style={sc.statLabel}>MÁX</Text>
+          <Text style={sc.statValue}>{maxStr}</Text>
+        </View>
+        <View style={sc.statSep} />
+        <View style={sc.statItem}>
+          <Text style={sc.statLabel}>LEITURAS</Text>
+          <Text style={sc.statValue}>{series.points.length}</Text>
+        </View>
         {series.latestLabel ? (
-          <Text style={seriesStyles.heroTime}>{series.latestLabel}</Text>
+          <>
+            <View style={sc.statSep} />
+            <View style={sc.statItem}>
+              <Text style={sc.statLabel}>ÚLT. LEITURA</Text>
+              <Text style={sc.statValue}>{series.latestLabel}</Text>
+            </View>
+          </>
         ) : null}
       </View>
 
-      {/* Min / Max / Count */}
-      <View style={seriesStyles.statsRow}>
-        <View style={seriesStyles.statItem}>
-          <Text style={seriesStyles.statLabel}>Mín</Text>
-          <Text style={seriesStyles.statValue}>{minFormatted}</Text>
-        </View>
-        <View style={seriesStyles.statDivider} />
-        <View style={seriesStyles.statItem}>
-          <Text style={seriesStyles.statLabel}>Máx</Text>
-          <Text style={seriesStyles.statValue}>{maxFormatted}</Text>
-        </View>
-        <View style={seriesStyles.statDivider} />
-        <View style={seriesStyles.statItem}>
-          <Text style={seriesStyles.statLabel}>Leituras</Text>
-          <Text style={seriesStyles.statValue}>{series.points.length}</Text>
-        </View>
-      </View>
-
-      {/* Sparkline */}
-      {scaled.length > 1 ? (
-        <View style={seriesStyles.sparkArea}>
-          <MiniSparkline scaled={scaled} color={color} height={40} />
-          <Text style={seriesStyles.sparkCaption}>Tendência recente</Text>
-        </View>
-      ) : null}
+      {/* Bar chart with timestamps */}
+      <BarChart series={series} color={color} />
     </View>
   );
 }
 
-const seriesStyles = StyleSheet.create({
+const sc = StyleSheet.create({
   card: {
     backgroundColor: Colors.background,
+    borderTopWidth: 3,
     borderRadius: Radius.sm,
     padding: Spacing.sm,
     rowGap: Spacing.xs,
   },
-  seriesLabel: {
-    fontSize: FontSize.xs,
+  fieldName: {
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.textMuted,
-    textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    columnGap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
   heroValue: {
-    fontSize: FontSize.title,
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: -1,
-    lineHeight: 36,
+    letterSpacing: -1.2,
+    lineHeight: 38,
+    marginTop: 2,
   },
-  heroTime: {
+  heroUnit: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+    marginBottom: Spacing.xs,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: Spacing.xs,
-    marginTop: 2,
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.xs,
   },
   statItem: {
     alignItems: 'flex-start',
-    rowGap: 1,
+    gap: 1,
   },
   statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '700',
     color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   statValue: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.text,
   },
-  statDivider: {
+  statSep: {
     width: 1,
     height: 24,
     backgroundColor: Colors.border,
-    marginHorizontal: 4,
-  },
-  sparkArea: {
-    marginTop: Spacing.xs,
-    rowGap: 3,
-  },
-  sparkCaption: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    marginHorizontal: 2,
   },
   unavailable: {
     paddingVertical: Spacing.xs,
   },
   unavailableField: {
-    fontSize: FontSize.xs,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.textMuted,
-    textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 2,
   },

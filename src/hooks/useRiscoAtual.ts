@@ -1,18 +1,18 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { fetchLeiturasParaRegiao } from '@services/leiturasService';
-import type { LeituraIot, ApiError } from '@/types';
+import { fetchRiscoAtual } from '@services/regioesService';
+import type { RiscoAtual, ApiError } from '@/types';
 import type { FetchStatus } from '@hooks/useDashboardSummary';
 
-interface UseLeiturasResult {
+interface UseRiscoAtualResult {
   status: FetchStatus;
-  data: LeituraIot[];
+  data: RiscoAtual | null;
   errorMessage: string | null;
   load: (opts?: { silent?: boolean }) => Promise<void>;
 }
 
-export function useLeituras(idRegiao: number | null): UseLeiturasResult {
+export function useRiscoAtual(idRegiao: number | null): UseRiscoAtualResult {
   const [status, setStatus] = useState<FetchStatus>('idle');
-  const [data, setData] = useState<LeituraIot[]>([]);
+  const [data, setData] = useState<RiscoAtual | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hasSucceededRef = useRef(false);
 
@@ -23,9 +23,8 @@ export function useLeituras(idRegiao: number | null): UseLeiturasResult {
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (idRegiao === null) {
-      setData([]);
+      setData(null);
       setStatus('idle');
-      setErrorMessage(null);
       return;
     }
     const silent = opts?.silent === true;
@@ -34,7 +33,7 @@ export function useLeituras(idRegiao: number | null): UseLeiturasResult {
       setErrorMessage(null);
     }
     try {
-      const result = await fetchLeiturasParaRegiao(idRegiao);
+      const result = await fetchRiscoAtual(idRegiao);
       hasSucceededRef.current = true;
       setData(result);
       setStatus('success');
@@ -42,7 +41,7 @@ export function useLeituras(idRegiao: number | null): UseLeiturasResult {
     } catch (err) {
       if (!silent || !hasSucceededRef.current) {
         const apiErr = err as ApiError;
-        setErrorMessage(apiErr?.message ?? 'Erro ao carregar leituras de sensores.');
+        setErrorMessage(apiErr?.message ?? 'Risco atual não disponível.');
         setStatus('error');
       }
     }

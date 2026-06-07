@@ -32,6 +32,7 @@ export interface BarEntry {
 /** One row in the regional ranking */
 export interface RankingEntry {
   idIndicador: number;
+  idRegiao: number;
   nomeRegiao: string;
   cidade: string;
   estado: string;
@@ -122,6 +123,7 @@ export function buildRegionalRanking(
     .slice(0, limit)
     .map(i => ({
       idIndicador: i.idIndicador,
+      idRegiao: i.idRegiao!,
       nomeRegiao: i.nomeRegiao ?? i.cidade,
       cidade: i.cidade,
       estado: i.estado,

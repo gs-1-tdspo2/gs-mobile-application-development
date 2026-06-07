@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { fetchDashboardSummary } from '@services/dashboardService';
 import { normalizeDashboardSummary } from '@utils/dashboardNormalizer';
 import type { DashboardSummary, ApiError } from '@/types';
@@ -9,11 +9,9 @@ interface UseDashboardSummaryResult {
   status: FetchStatus;
   data: DashboardSummary | null;
   errorMessage: string | null;
-  // Populated when the API response is missing or has unexpected fields.
-  // isPartial=true means data is present but some fields fell back to 0.
   warnings: string[];
   isPartial: boolean;
-  load: () => Promise<void>;
+  load: (opts?: { silent?: boolean }) => Promise<void>;
 }
 
 export function useDashboardSummary(): UseDashboardSummaryResult {
@@ -22,30 +20,39 @@ export function useDashboardSummary(): UseDashboardSummaryResult {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [isPartial, setIsPartial] = useState(false);
+  const hasSucceededRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setStatus('loading');
-    setErrorMessage(null);
-    setWarnings([]);
-    setIsPartial(false);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
+    if (!silent || !hasSucceededRef.current) {
+      setStatus('loading');
+      setErrorMessage(null);
+      setWarnings([]);
+      setIsPartial(false);
+    }
     try {
       const raw = await fetchDashboardSummary();
       const result = normalizeDashboardSummary(raw);
 
       if (result.data === null && result.warnings.length > 0) {
-        // Malformed payload (not a clean 204 empty body)
-        setErrorMessage(result.warnings.join(' '));
-        setStatus('error');
+        // Malformed payload
+        if (!silent || !hasSucceededRef.current) {
+          setErrorMessage(result.warnings.join(' '));
+          setStatus('error');
+        }
       } else {
+        hasSucceededRef.current = true;
         setData(result.data);
         setWarnings(result.warnings);
         setIsPartial(result.isPartial);
         setStatus('success');
       }
     } catch (err) {
-      const apiErr = err as ApiError;
-      setErrorMessage(apiErr?.message ?? 'Erro ao carregar o painel.');
-      setStatus('error');
+      if (!silent || !hasSucceededRef.current) {
+        const apiErr = err as ApiError;
+        setErrorMessage(apiErr?.message ?? 'Erro ao carregar o painel.');
+        setStatus('error');
+      }
     }
   }, []);
 

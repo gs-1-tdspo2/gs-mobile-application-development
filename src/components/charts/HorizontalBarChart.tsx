@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { BarEntry } from '@utils/chartTransforms';
 import { Colors } from '@constants/colors';
 import { FontSize, Spacing, Radius } from '@constants/design';
@@ -6,9 +6,10 @@ import { FontSize, Spacing, Radius } from '@constants/design';
 interface Props {
   data: BarEntry[];
   showValues?: boolean;
+  onBarPress?: (key: string) => void;
 }
 
-export function HorizontalBarChart({ data, showValues = true }: Props) {
+export function HorizontalBarChart({ data, showValues = true, onBarPress }: Props) {
   const activeData = data.filter(d => d.value > 0);
   if (activeData.length === 0) return null;
 
@@ -19,7 +20,12 @@ export function HorizontalBarChart({ data, showValues = true }: Props) {
       {activeData.map(entry => {
         const pct = maxVal > 0 ? (entry.value / maxVal) * 100 : 0;
         return (
-          <View key={entry.key} style={styles.row}>
+          <TouchableOpacity
+            key={entry.key}
+            style={styles.row}
+            onPress={onBarPress ? () => onBarPress(entry.key) : undefined}
+            activeOpacity={onBarPress ? 0.75 : 1}
+          >
             <Text style={styles.label} numberOfLines={2}>{entry.label}</Text>
             <View style={styles.trackArea}>
               <View style={styles.track}>
@@ -37,7 +43,7 @@ export function HorizontalBarChart({ data, showValues = true }: Props) {
             {showValues ? (
               <Text style={[styles.value, { color: entry.color }]}>{entry.value}</Text>
             ) : null}
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>
