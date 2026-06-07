@@ -212,3 +212,135 @@ export function formatSensorValue(value: number | null, unit: string): string {
   if (unit === 'índice') return value.toFixed(3);
   return `${value} ${unit}`;
 }
+
+// ─── Sensor history ───────────────────────────────────────────────────────────
+
+export type HistoryPeriod = 'today' | '24h' | '7d' | 'all';
+
+export interface HistoryStats {
+  latest: number | null;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+  count: number;
+}
+
+export interface HistorySeries {
+  label: string;
+  unit: string;
+  period: HistoryPeriod;
+  points: SensorPoint[];
+  aggregated: boolean;
+  stats: HistoryStats;
+}
+
+const FIELD_CANDIDATES_MAP: Record<string, string[]> = {
+  nivelAguaPercentual: ['nivelAguaPercentual', 'nivelAguaPct', 'nrNivelAguaPct', 'waterLevelPercent', 'nivelAgua'],
+  distanciaAguaCm:     ['distanciaAguaCm', 'nrDistanciaAguaCm', 'waterDistanceCm', 'distanciaAgua'],
+  pressaoHpa:          ['pressaoHpa', 'nrPressaoHpa', 'pressureHpa', 'pressaoAtmosferica'],
+  pm25:                ['pm25', 'nrPm25', 'PM25'],
+  pm10:                ['pm10', 'nrPm10', 'PM10'],
+  inclinacaoGraus:     ['inclinacaoGraus', 'nrInclGraus', 'tiltAngle', 'inclinacao'],
+  vibracao:            ['vibracao', 'nrVibracao', 'vibration'],
+};
+
+function filterByPeriod(sorted: LeituraIot[], period: HistoryPeriod): LeituraIot[] {
+  if (period === 'all') return sorted;
+  const now = Date.now();
+  let cutoff: number;
+  if (period === 'today') {
+    const d = new Date(now);
+    cutoff = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  } else if (period === '24h') {
+    cutoff = now - 24 * 60 * 60 * 1000;
+  } else {
+    cutoff = now - 7 * 24 * 60 * 60 * 1000;
+  }
+  return sorted.filter(r => {
+    const ts = r.dtRecebidoEm ?? r.dtLeitura;
+    if (!ts) return false;
+    const t = new Date(normalizeTimestamp(ts)).getTime();
+    return !isNaN(t) && t >= cutoff;
+  });
+}
+
+function aggregateByDay(readings: LeituraIot[], candidates: string[]): SensorPoint[] {
+  const byDay = new Map<string, { vals: number[]; lastMs: number }>();
+  for (const r of readings) {
+    const ts = r.dtRecebidoEm ?? r.dtLeitura;
+    if (!ts) continue;
+    const d = new Date(normalizeTimestamp(ts));
+    if (isNaN(d.getTime())) continue;
+    const day = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const v = readField(r as unknown as Record<string, unknown>, candidates);
+    if (v !== null) {
+      const entry = byDay.get(day);
+      const ms = d.getTime();
+      if (entry) {
+        entry.vals.push(v);
+        if (ms > entry.lastMs) entry.lastMs = ms;
+      } else {
+        byDay.set(day, { vals: [v], lastMs: ms });
+      }
+    }
+  }
+  return Array.from(byDay.entries())
+    .sort((a, b) => a[1].lastMs - b[1].lastMs)
+    .map(([label, { vals }]) => ({
+      label,
+      value: vals.reduce((s, v) => s + v, 0) / vals.length,
+    }));
+}
+
+export function buildHistorySeries(
+  leituras: LeituraIot[],
+  field: string,
+  label: string,
+  unit: string,
+  period: HistoryPeriod,
+): HistorySeries {
+  const candidates = FIELD_CANDIDATES_MAP[field] ?? [field];
+  const valid = leituras.filter(r => r.stValida !== 'N');
+  const sorted = [...valid].sort((a, b) => {
+    const ta = new Date(normalizeTimestamp(a.dtRecebidoEm ?? a.dtLeitura)).getTime();
+    const tb = new Date(normalizeTimestamp(b.dtRecebidoEm ?? b.dtLeitura)).getTime();
+    return (isNaN(ta) ? 0 : ta) - (isNaN(tb) ? 0 : tb);
+  });
+  const filtered = filterByPeriod(sorted, period);
+  const shouldAggregate = (period === '7d' || period === 'all') && filtered.length > 48;
+
+  let points: SensorPoint[];
+  if (shouldAggregate) {
+    points = aggregateByDay(filtered, candidates);
+  } else {
+    const raw: SensorPoint[] = [];
+    for (const r of filtered) {
+      const ts = r.dtRecebidoEm ?? r.dtLeitura;
+      if (!ts) continue;
+      const v = readField(r as unknown as Record<string, unknown>, candidates);
+      if (v !== null) raw.push({ label: formatLeituraTimestamp(ts), value: v });
+    }
+    if (raw.length > 60) {
+      const step = Math.ceil(raw.length / 60);
+      points = raw.filter((_, i) => i % step === 0 || i === raw.length - 1);
+    } else {
+      points = raw;
+    }
+  }
+
+  const allValues: number[] = [];
+  for (const r of filtered) {
+    const v = readField(r as unknown as Record<string, unknown>, candidates);
+    if (v !== null) allValues.push(v);
+  }
+  const n = allValues.length;
+  const stats: HistoryStats = {
+    latest: n > 0 ? allValues[n - 1] : null,
+    avg:    n > 0 ? allValues.reduce((s, v) => s + v, 0) / n : null,
+    min:    n > 0 ? Math.min(...allValues) : null,
+    max:    n > 0 ? Math.max(...allValues) : null,
+    count:  n,
+  };
+
+  return { label, unit, period, points, aggregated: shouldAggregate, stats };
+}

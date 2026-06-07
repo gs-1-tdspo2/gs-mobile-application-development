@@ -15,7 +15,8 @@ import { useLeituras } from '@hooks/useLeituras';
 import { usePolling } from '@hooks/usePolling';
 import { LoadingState } from '@components/ui/LoadingState';
 import { ErrorState } from '@components/ui/ErrorState';
-import { SensorReadingSection } from '@components/charts';
+import { SensorReadingSection, SensorHistoryCard } from '@components/charts';
+import { ObservacaoClimaticaCard } from '@components/clima';
 import { Colors } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 import { StatusEstacaoLabels, TipoEstacaoLabels } from '@constants/enums';
@@ -185,6 +186,14 @@ export default function EstacaoDetalheScreen() {
           )
         )}
 
+        {/* ── Condições meteorológicas da região ─────────── */}
+        {idRegiaoNum && (
+          <ObservacaoClimaticaCard
+            idRegiao={idRegiaoNum}
+            title="Condições meteorológicas da região vinculada"
+          />
+        )}
+
         {/* ── Live telemetry ─────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -265,6 +274,71 @@ export default function EstacaoDetalheScreen() {
             </>
           )}
         </View>
+
+        {/* ── Histórico dos sensores ─────────────────────── */}
+        {hasLeituras && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="analytics-outline" size={16} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>Histórico dos sensores</Text>
+            </View>
+            <View style={[styles.historyGrid, isDesktop && styles.historyGridDesktop]}>
+              <View style={[isDesktop && styles.historyItem]}>
+                <SensorHistoryCard
+                  title="Nível de água"
+                  sensorName="HC-SR04"
+                  color="#1565C0"
+                  leituras={stationLeituras}
+                  primaryField="nivelAguaPercentual"
+                  primaryLabel="Nível de água"
+                  primaryUnit="%"
+                  secondaryField="distanciaAguaCm"
+                  secondaryLabel="Distância ao sensor"
+                  secondaryUnit="cm"
+                />
+              </View>
+              <View style={[isDesktop && styles.historyItem]}>
+                <SensorHistoryCard
+                  title="Qualidade do ar"
+                  sensorName="PMS5003 / simulado"
+                  color="#6A1B9A"
+                  leituras={stationLeituras}
+                  primaryField="pm25"
+                  primaryLabel="PM2.5"
+                  primaryUnit="µg/m³"
+                  secondaryField="pm10"
+                  secondaryLabel="PM10"
+                  secondaryUnit="µg/m³"
+                />
+              </View>
+              <View style={[isDesktop && styles.historyItem]}>
+                <SensorHistoryCard
+                  title="Pressão atmosférica"
+                  sensorName="BMP180"
+                  color="#00695C"
+                  leituras={stationLeituras}
+                  primaryField="pressaoHpa"
+                  primaryLabel="Pressão"
+                  primaryUnit="hPa"
+                />
+              </View>
+              <View style={[isDesktop && styles.historyItem]}>
+                <SensorHistoryCard
+                  title="Movimento físico"
+                  sensorName="MPU6050"
+                  color="#BF360C"
+                  leituras={stationLeituras}
+                  primaryField="inclinacaoGraus"
+                  primaryLabel="Inclinação"
+                  primaryUnit="°"
+                  secondaryField="vibracao"
+                  secondaryLabel="Vibração"
+                  secondaryUnit="índice"
+                />
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* ── ESP32 status ───────────────────────────────── */}
         <View style={styles.section}>
@@ -492,5 +566,19 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // History section
+  historyGrid: {
+    gap: Spacing.sm,
+  },
+  historyGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  historyItem: {
+    flex: 1,
+    minWidth: 300,
   },
 });

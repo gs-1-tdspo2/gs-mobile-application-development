@@ -1,0 +1,1 @@
+export { ObservacaoClimaticaCard } from './ObservacaoClimaticaCard';
