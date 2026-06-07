@@ -278,8 +278,6 @@ export function SensorReadingSection({
   error,
 }: SensorReadingSectionProps) {
   const seriesEntries = Object.entries(seriesMap);
-  const anyAvailable = seriesEntries.some(([, s]) => s.available);
-  const anyData = seriesEntries.some(([, s]) => s.points.length > 0);
 
   return (
     <Card style={sectionStyles.card}>
@@ -300,12 +298,6 @@ export function SensorReadingSection({
       ) : error ? (
         <View style={sectionStyles.center}>
           <Text style={sectionStyles.errorText}>{error}</Text>
-        </View>
-      ) : !anyAvailable || !anyData ? (
-        <View style={sectionStyles.center}>
-          <Text style={sectionStyles.centerText}>
-            Nenhuma leitura IoT encontrada para esta região.
-          </Text>
         </View>
       ) : (
         <View style={sectionStyles.seriesContainer}>

@@ -59,7 +59,7 @@ const SENSOR_PROFILES = [
     sensor: 'HC-SR04',
     label: 'Nível de água',
     category: 'Enchente',
-    fields: 'distanciaAguaCm · nivelAguaPct',
+    fields: 'distanciaAguaCm · nivelAguaPercentual',
     description: 'Sensor ultrassônico que mede a distância até a superfície da água.',
     color: '#1565C0',
     bg: '#E3F2FD',

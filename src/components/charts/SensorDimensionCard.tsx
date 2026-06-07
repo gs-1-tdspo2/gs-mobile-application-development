@@ -26,7 +26,7 @@ export const SENSOR_DIMENSIONS: SensorDimension[] = [
     componente: 'HC-SR04',
     tipo: 'REAL',
     risco: 'ENCHENTE',
-    campos: ['distanciaAguaCm', 'nivelAguaPct'],
+    campos: ['distanciaAguaCm', 'nivelAguaPercentual'],
     papel: 'Nível de água',
     interpretacao:
       'Mede a distância até a superfície da água por ultrassom. ' +
