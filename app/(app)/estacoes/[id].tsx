@@ -340,19 +340,6 @@ export default function EstacaoDetalheScreen() {
           </View>
         )}
 
-        {/* ── ESP32 status ───────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="hardware-chip-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.sectionTitleMuted}>Status do Dispositivo ESP32</Text>
-          </View>
-          <View style={styles.esp32Card}>
-            <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
-            <Text style={styles.esp32Text}>
-              Status detalhado do ESP32 ainda não está disponível pela API REST.
-            </Text>
-          </View>
-        </View>
 
         <View style={{ height: Spacing.xxl }} />
       </ScrollView>
@@ -482,11 +469,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  sectionTitleMuted: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
+
 
   // Telemetry states
   inlineLoading: {
@@ -528,24 +511,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
     marginBottom: Spacing.sm,
-  },
-
-  // ESP32
-  esp32Card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.xs,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    ...Shadow.sm,
-  },
-  esp32Text: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    flex: 1,
-    lineHeight: 18,
-    fontStyle: 'italic' as const,
   },
 
   // Centered error (no idRegiao)
