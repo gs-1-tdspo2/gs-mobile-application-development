@@ -26,7 +26,7 @@ export function AlertStatusDonut({ data }: Props) {
           >
             <Pie.Chart innerRadius="42%" />
           </PolarChart>
-          <View style={styles.centerLabel}>
+          <View pointerEvents="none" style={styles.centerLabel}>
             <Text style={styles.centerNumber}>{total}</Text>
             <Text style={styles.centerCaption}>alertas</Text>
           </View>
@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    pointerEvents: 'none' as const,
   },
   centerNumber: {
     fontSize: FontSize.xxl,

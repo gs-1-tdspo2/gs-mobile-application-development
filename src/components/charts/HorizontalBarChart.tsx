@@ -7,9 +7,10 @@ interface Props {
   data: BarEntry[];
   showValues?: boolean;
   onBarPress?: (key: string) => void;
+  activeKey?: string;
 }
 
-export function HorizontalBarChart({ data, showValues = true, onBarPress }: Props) {
+export function HorizontalBarChart({ data, showValues = true, onBarPress, activeKey }: Props) {
   const activeData = data.filter(d => d.value > 0);
   if (activeData.length === 0) return null;
 
@@ -19,10 +20,11 @@ export function HorizontalBarChart({ data, showValues = true, onBarPress }: Prop
     <View style={styles.wrapper}>
       {activeData.map(entry => {
         const pct = maxVal > 0 ? (entry.value / maxVal) * 100 : 0;
+        const isDimmed = activeKey !== undefined && entry.key !== activeKey;
         return (
           <TouchableOpacity
             key={entry.key}
-            style={styles.row}
+            style={[styles.row, isDimmed && styles.rowDimmed]}
             onPress={onBarPress ? () => onBarPress(entry.key) : undefined}
             activeOpacity={onBarPress ? 0.75 : 1}
           >
@@ -91,5 +93,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     minWidth: 28,
     textAlign: 'right',
+  },
+  rowDimmed: {
+    opacity: 0.4,
   },
 });

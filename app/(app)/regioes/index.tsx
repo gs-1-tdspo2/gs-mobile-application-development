@@ -205,20 +205,28 @@ export default function RegioesScreen() {
     <View style={styles.root}>
       <Stack.Screen options={{ headerRight: undefined }} />
 
-      {/* Ativas / Inativas toggle */}
+      {/* Ativas / Inativas toggle + Nova região (desktop) */}
       <View style={[styles.filterBar, isDesktop && styles.filterBarDesktop]}>
-        {(['ativas', 'inativas'] as ActiveFilter[]).map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
-            onPress={() => setActiveFilter(f)}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.filterChipText, activeFilter === f && styles.filterChipTextActive]}>
-              {f === 'ativas' ? 'Ativas' : 'Inativas'}
-            </Text>
+        <View style={styles.filterChipsRow}>
+          {(['ativas', 'inativas'] as ActiveFilter[]).map(f => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
+              onPress={() => setActiveFilter(f)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.filterChipText, activeFilter === f && styles.filterChipTextActive]}>
+                {f === 'ativas' ? 'Ativas' : 'Inativas'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {isGoverno && isDesktop && (
+          <TouchableOpacity style={styles.novaRegiaoBtn} onPress={handleNova} activeOpacity={0.85}>
+            <Ionicons name="add" size={16} color="#FFFFFF" />
+            <Text style={styles.novaRegiaoBtnText}>Nova região</Text>
           </TouchableOpacity>
-        ))}
+        )}
       </View>
 
       {status === 'loading' && !refreshing && data.length === 0 && (
@@ -274,7 +282,7 @@ export default function RegioesScreen() {
         </>
       )}
 
-      {isGoverno && (
+      {isGoverno && !isDesktop && (
         <TouchableOpacity style={styles.fab} onPress={handleNova} activeOpacity={0.85}>
           <Ionicons name="add" size={28} color={Colors.card} />
         </TouchableOpacity>
@@ -291,12 +299,31 @@ const styles = StyleSheet.create({
 
   filterBar: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  filterChipsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  novaRegiaoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primary,
+    paddingVertical: 7,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+  },
+  novaRegiaoBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   filterBarDesktop: {
     borderBottomWidth: 0,

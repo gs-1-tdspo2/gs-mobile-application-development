@@ -3,24 +3,28 @@ import {
   View,
   Text,
   FlatList,
+  Modal,
   ScrollView,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Platform,
   useWindowDimensions,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlertas } from '@hooks/useAlertas';
+import { resolverAlerta } from '@services/alertasService';
 import { useRegioes } from '@hooks/useRegioes';
 import { useAppContext } from '@contexts/AppContext';
+import { useToast } from '@contexts/ToastContext';
 import { usePolling } from '@hooks/usePolling';
 import { LoadingState } from '@components/ui/LoadingState';
 import { ErrorState } from '@components/ui/ErrorState';
 import { EmptyState } from '@components/ui/EmptyState';
-import { FilterSelect, FilterPanel } from '@components/filters';
+import { FilterSelect, FilterPanel, HybridSelect } from '@components/filters';
 import { Colors, RiskColors, RiskBackgrounds } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 import { NivelRiscoLabels, TipoAlertaLabels, StatusAlertaLabels } from '@constants/enums';
@@ -92,9 +96,12 @@ interface RegiaoInfo {
 interface AlertCardProps {
   alerta: Alerta;
   regiaoInfo: RegiaoInfo | null;
+  isGoverno: boolean;
+  onViewRegiao: () => void;
+  onRequestResolve?: () => void;
 }
 
-function AlertCard({ alerta, regiaoInfo }: AlertCardProps) {
+function AlertCard({ alerta, regiaoInfo, isGoverno, onViewRegiao, onRequestResolve }: AlertCardProps) {
   const borderColor = RiskColors[alerta.nivelRisco] ?? Colors.border;
   const bgColor     = RiskBackgrounds[alerta.nivelRisco] ?? Colors.card;
   const statusColor = statusBadgeColor(alerta.statusAlerta);
@@ -158,6 +165,20 @@ function AlertCard({ alerta, regiaoInfo }: AlertCardProps) {
           </Text>
         )}
       </View>
+
+      {/* Resolve — Governo only, not yet resolved/cancelled */}
+      {isGoverno && alerta.statusAlerta !== 'RESOLVIDO' && alerta.statusAlerta !== 'CANCELADO' && (
+        <TouchableOpacity onPress={onRequestResolve} style={card.resolveRow} activeOpacity={0.75}>
+          <Ionicons name="checkmark-circle-outline" size={13} color="#1B5E20" />
+          <Text style={card.resolveRowText}>Marcar como resolvido</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Ver região */}
+      <TouchableOpacity onPress={onViewRegiao} style={card.verRegiaoRow} activeOpacity={0.75}>
+        <Ionicons name="arrow-forward-circle-outline" size={13} color={Colors.primary} />
+        <Text style={card.verRegiaoText}>Ver região</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -276,6 +297,34 @@ const card = StyleSheet.create({
     fontWeight: '600',
     flexShrink: 0,
   },
+  verRegiaoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: Spacing.xs,
+    marginTop: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  verRegiaoText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  resolveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: Spacing.xs,
+    marginTop: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  resolveRowText: {
+    fontSize: FontSize.xs,
+    color: '#1B5E20',
+    fontWeight: '600',
+  },
 });
 
 // ─── Counter chip ─────────────────────────────────────────────────────────────
@@ -328,8 +377,13 @@ export default function AlertasScreen() {
   const { data: rawAlertas, status, errorMessage, load } = useAlertas();
   const { data: regioes, load: loadRegioes } = useRegioes();
   const { isGoverno } = useAppContext();
+  const { showToast } = useToast();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
+  const router = useRouter();
+
+  const [confirmAlert, setConfirmAlert] = useState<Alerta | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   const rawParams = useLocalSearchParams<{ status?: string; tipo?: string }>();
   const paramStatus = typeof rawParams.status === 'string' ? rawParams.status : undefined;
@@ -345,8 +399,8 @@ export default function AlertasScreen() {
     paramTipo && TIPO_FILTERS.some(f => f.value === paramTipo)
       ? (paramTipo as FilterTipo) : 'TODOS',
   );
-  const [filterRegiao, setFilterRegiao] = useState('TODOS');
-  const [filterEstado, setFilterEstado] = useState('TODOS');
+  const [filterRegiao, setFilterRegiao] = useState('');
+  const [filterEstado, setFilterEstado] = useState('');
   const [searchText,   setSearchText]   = useState('');
 
   // idRegiao → { nome, cidade, estado }
@@ -391,10 +445,7 @@ export default function AlertasScreen() {
       }
     });
     if (seen.size <= 1) return [];
-    return [
-      { value: 'TODOS', label: 'Todas' },
-      ...Array.from(seen.entries()).map(([id, lbl]) => ({ value: String(id), label: lbl })),
-    ];
+    return Array.from(seen.entries()).map(([id, lbl]) => ({ value: String(id), label: lbl }));
   }, [rawAlertas, regiaoInfoMap]);
 
   // Estado filter options — only UFs present in the alert list
@@ -405,10 +456,7 @@ export default function AlertasScreen() {
       if (info?.estado) states.add(info.estado);
     });
     if (states.size <= 1) return [];
-    return [
-      { value: 'TODOS', label: 'Todos' },
-      ...Array.from(states).sort().map(uf => ({ value: uf, label: uf })),
-    ];
+    return Array.from(states).sort().map(uf => ({ value: uf, label: uf }));
   }, [rawAlertas, regiaoInfoMap]);
 
   // Summary counters — always unfiltered totals
@@ -427,10 +475,15 @@ export default function AlertasScreen() {
       if (filterStatus !== 'TODOS' && a.statusAlerta !== filterStatus) return false;
       if (filterNivel  !== 'TODOS' && a.nivelRisco   !== filterNivel)  return false;
       if (filterTipo   !== 'TODOS' && a.tipoAlerta   !== filterTipo)   return false;
-      if (filterRegiao !== 'TODOS' && String(a.idRegiao) !== filterRegiao) return false;
-      if (filterEstado !== 'TODOS') {
+      if (filterRegiao.trim()) {
+        const q = filterRegiao.toLowerCase();
         const info = regiaoInfoMap[a.idRegiao];
-        if (!info || info.estado !== filterEstado) return false;
+        const lbl = info ? `${info.nome} (${info.estado})`.toLowerCase() : `região ${a.idRegiao}`;
+        if (!lbl.includes(q)) return false;
+      }
+      if (filterEstado.trim()) {
+        const info = regiaoInfoMap[a.idRegiao];
+        if (!info || !info.estado.toLowerCase().includes(filterEstado.toLowerCase())) return false;
       }
       if (searchText.trim()) {
         const q = searchText.toLowerCase();
@@ -448,7 +501,7 @@ export default function AlertasScreen() {
   const hasFilters = !!(
     searchText.trim() ||
     filterStatus !== 'TODOS' || filterNivel !== 'TODOS' ||
-    filterTipo   !== 'TODOS' || filterRegiao !== 'TODOS' || filterEstado !== 'TODOS'
+    filterTipo   !== 'TODOS' || filterRegiao.trim() || filterEstado.trim()
   );
 
   const clearFilters = useCallback(() => {
@@ -456,9 +509,24 @@ export default function AlertasScreen() {
     setFilterStatus('TODOS');
     setFilterNivel('TODOS');
     setFilterTipo('TODOS');
-    setFilterRegiao('TODOS');
-    setFilterEstado('TODOS');
+    setFilterRegiao('');
+    setFilterEstado('');
   }, []);
+
+  const handleResolve = useCallback(async () => {
+    if (!confirmAlert || resolving) return;
+    setResolving(true);
+    try {
+      await resolverAlerta(confirmAlert.idAlerta);
+      showToast('Alerta marcado como resolvido.', 'success');
+      setConfirmAlert(null);
+      load();
+    } catch {
+      showToast('Não foi possível marcar o alerta como resolvido.', 'error');
+    } finally {
+      setResolving(false);
+    }
+  }, [confirmAlert, resolving, showToast, load]);
 
   const screenTitle = isGoverno ? 'Console de Alertas' : 'Alertas em Acompanhamento';
 
@@ -553,19 +621,21 @@ export default function AlertasScreen() {
           onSelect={setFilterTipo}
         />
         {regiaoFilterOptions.length > 0 && (
-          <FilterSelect
+          <HybridSelect
             label="Região"
+            placeholder="Buscar região…"
             options={regiaoFilterOptions}
-            selected={filterRegiao}
-            onSelect={setFilterRegiao}
+            value={filterRegiao}
+            onChange={setFilterRegiao}
           />
         )}
         {estadoFilterOptions.length > 0 && (
-          <FilterSelect
+          <HybridSelect
             label="Estado"
+            placeholder="Buscar estado…"
             options={estadoFilterOptions}
-            selected={filterEstado}
-            onSelect={setFilterEstado}
+            value={filterEstado}
+            onChange={setFilterEstado}
           />
         )}
       </FilterPanel>
@@ -603,6 +673,9 @@ export default function AlertasScreen() {
             <AlertCard
               alerta={item}
               regiaoInfo={regiaoInfoMap[item.idRegiao] ?? null}
+              isGoverno={isGoverno}
+              onViewRegiao={() => router.push(`/regioes/${item.idRegiao}`)}
+              onRequestResolve={() => setConfirmAlert(item)}
             />
           )}
           ListHeaderComponent={ListHeader}
@@ -631,6 +704,48 @@ export default function AlertasScreen() {
           }
           showsVerticalScrollIndicator={false}
         />
+      )}
+
+      {confirmAlert !== null && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => { if (!resolving) setConfirmAlert(null); }}
+        >
+          <TouchableWithoutFeedback onPress={() => { if (!resolving) setConfirmAlert(null); }}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalTitle}>Marcar alerta como resolvido?</Text>
+                  <Text style={styles.modalMessage}>
+                    Essa ação indica que o alerta foi tratado e altera seu status para Resolvido. O registro continuará disponível no histórico.
+                  </Text>
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.modalBtnCancel]}
+                      onPress={() => setConfirmAlert(null)}
+                      disabled={resolving}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.modalBtnConfirm, resolving && styles.modalBtnDisabled]}
+                      onPress={handleResolve}
+                      disabled={resolving}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.modalBtnConfirmText}>
+                        {resolving ? 'Atualizando…' : 'Confirmar resolução'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       )}
     </View>
   );
@@ -732,5 +847,67 @@ const styles = StyleSheet.create({
   },
   listContentEmpty: {
     flex: 1,
+  },
+
+  // Confirmation modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    ...Shadow.md,
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  modalMessage: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'flex-end',
+  },
+  modalBtn: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  modalBtnCancel: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalBtnCancelText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  modalBtnConfirm: {
+    backgroundColor: '#1B5E20',
+  },
+  modalBtnConfirmText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalBtnDisabled: {
+    opacity: 0.6,
   },
 });
