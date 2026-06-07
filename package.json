@@ -1,5 +1,5 @@
 {
-  "name": "mobile-application-development-2",
+  "name": "gs-mobile-application-development",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
@@ -33,7 +33,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web",
+    "preview:web": "npx serve dist"
   },
   "private": true
 }

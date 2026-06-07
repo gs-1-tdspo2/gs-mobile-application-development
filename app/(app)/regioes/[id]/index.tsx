@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRegiao } from '@hooks/useRegiao';
 import { useInativarRegiao } from '@hooks/useInativarRegiao';
 import { useEstacoes } from '@hooks/useEstacoes';
+import { useLeituras } from '@hooks/useLeituras';
+import { usePolling } from '@hooks/usePolling';
 import { useAppContext } from '@contexts/AppContext';
 import { useToast } from '@contexts/ToastContext';
 import { Colors, RiskColors, RiskBackgrounds } from '@constants/colors';
@@ -75,20 +77,31 @@ export default function DetalheRegiaoScreen() {
   const { status, data: regiao, errorMessage, load } = useRegiao();
   const { status: inativarStatus, execute: inativar } = useInativarRegiao();
   const { status: estStatus, data: estacoes, load: loadEst } = useEstacoes(isNaN(regiaoId) ? null : regiaoId);
+  const { status: leitStatus, data: leituras, load: loadLeituras } = useLeituras(isNaN(regiaoId) ? null : regiaoId);
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
   const [confirmVisible, setConfirmVisible] = useState(false);
 
-  // Refresh region data + stations whenever screen gains focus
+  // Refresh region data + stations + leituras whenever screen gains focus
   useFocusEffect(
     useCallback(() => {
       if (!isNaN(regiaoId)) {
         load(regiaoId);
         loadEst();
+        loadLeituras();
       }
-    }, [regiaoId, load, loadEst]),
+    }, [regiaoId, load, loadEst, loadLeituras]),
   );
+
+  // Live polling every 10 s
+  const pollRegiao = useCallback(() => {
+    if (!isNaN(regiaoId)) {
+      loadEst();
+      loadLeituras();
+    }
+  }, [regiaoId, loadEst, loadLeituras]);
+  usePolling(pollRegiao);
 
   const handleEditar = useCallback(() => {
     router.push(`/regioes/${regiaoId}/editar`);
@@ -246,6 +259,63 @@ export default function DetalheRegiaoScreen() {
                 </Text>
               </View>
             ))}
+          </View>
+
+          {/* Leituras recentes */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Leituras recentes</Text>
+
+            {leitStatus === 'loading' && leituras.length === 0 && (
+              <View style={styles.stationsLoading}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.stationsLoadingText}>Carregando leituras…</Text>
+              </View>
+            )}
+
+            {leitStatus === 'error' && (
+              <Text style={styles.stationsEmpty}>Erro ao carregar leituras.</Text>
+            )}
+
+            {leitStatus === 'success' && leituras.length === 0 && (
+              <Text style={styles.stationsEmpty}>Nenhuma leitura disponível para esta região.</Text>
+            )}
+
+            {leituras.length > 0 && (() => {
+              const latest = leituras.slice().sort(
+                (a, b) => new Date(b.dtLeit).getTime() - new Date(a.dtLeit).getTime()
+              )[0];
+              if (!latest) return null;
+              const fields: { label: string; val: number | null | undefined; unit: string }[] = [
+                { label: 'Nível d\'água',        val: latest.nivelAguaPct,     unit: '%' },
+                { label: 'Distância ao nível',  val: latest.distanciaAguaCm,  unit: 'cm' },
+                { label: 'Inclinação',           val: latest.inclinacaoGraus,  unit: '°' },
+                { label: 'Vibração',             val: latest.vibracao,         unit: '' },
+                { label: 'Pressão atm.',         val: latest.pressaoHpa,       unit: 'hPa' },
+                { label: 'PM2.5',                val: latest.pm25,             unit: 'μg/m³' },
+                { label: 'PM10',                 val: latest.pm10,             unit: 'μg/m³' },
+              ];
+              return (
+                <>
+                  <Text style={styles.stationMeta}>
+                    Coletado em {formatDate(latest.dtLeit)} · {leituras.length} leitura{leituras.length !== 1 ? 's' : ''} disponível{leituras.length !== 1 ? 'is' : ''}
+                  </Text>
+                  {fields.map(f => (
+                    <View key={f.label} style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>{f.label}</Text>
+                      {f.val != null && !isNaN(Number(f.val)) ? (
+                        <Text style={styles.infoValue}>
+                          {Number(f.val).toFixed(1)}{f.unit ? ` ${f.unit}` : ''}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.infoValue, { fontStyle: 'italic', color: Colors.textMuted }]}>
+                          n/d
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </>
+              );
+            })()}
           </View>
 
           {/* Metadados */}

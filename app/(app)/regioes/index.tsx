@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
   FlatList,
+  TextInput,
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
@@ -30,6 +31,7 @@ export default function RegioesScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>('ativas');
+  const [searchText, setSearchText] = useState('');
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
@@ -54,7 +56,17 @@ export default function RegioesScreen() {
   }, [router]);
 
   // API only returns active regions; "inativas" filter will always be empty
-  const filtered = filter === 'ativas' ? data : [];
+  const filtered = useMemo(() => {
+    if (filter === 'inativas') return [];
+    if (!searchText.trim()) return data;
+    const q = searchText.toLowerCase();
+    return data.filter(
+      r =>
+        r.nome.toLowerCase().includes(q) ||
+        r.cidade.toLowerCase().includes(q) ||
+        r.estado.toLowerCase().includes(q),
+    );
+  }, [data, filter, searchText]);
 
   return (
     <View style={styles.root}>
@@ -102,13 +114,41 @@ export default function RegioesScreen() {
               renderItem={({ item }) => (
                 <RegiaoCard regiao={item} onPress={() => handleCard(item)} />
               )}
+              ListHeaderComponent={
+                <View style={[styles.searchWrap, isDesktop && styles.searchWrapDesktop]}>
+                  <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    placeholder="Buscar por nome, cidade ou estado…"
+                    placeholderTextColor={Colors.textMuted}
+                    returnKeyType="search"
+                    clearButtonMode="while-editing"
+                  />
+                  {searchText.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchText('')}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
               contentContainerStyle={[
                 styles.list,
                 isDesktop && styles.listDesktop,
                 filtered.length === 0 && styles.listEmpty,
               ]}
               ListEmptyComponent={
-                <EmptyState message="Nenhuma região monitorada cadastrada." />
+                <EmptyState
+                  message={
+                    searchText.trim()
+                      ? 'Nenhuma região encontrada para esta busca.'
+                      : 'Nenhuma região monitorada cadastrada.'
+                  }
+                />
               }
               refreshControl={
                 <RefreshControl
@@ -217,5 +257,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadow.md,
+  },
+
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 4,
+    gap: Spacing.xs,
+  },
+  searchWrapDesktop: {},
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: 0,
   },
 });

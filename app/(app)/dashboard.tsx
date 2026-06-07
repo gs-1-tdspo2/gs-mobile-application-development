@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
+import { usePolling } from '@hooks/usePolling';
 import {
   View,
   Text,
@@ -147,7 +148,7 @@ function StatusCard({
   const riskLabel = isKnown ? NivelRiscoLabels[nivel as NivelRisco] : 'Não informado';
   const title = isGoverno ? 'Situação Operacional' : 'Monitoramento Ambiental';
   const subtitle = isGoverno
-    ? `${regioesEmAtencao} região(ões) com risco alto ou crítico`
+    ? `${regioesEmAtencao} ${regioesEmAtencao === 1 ? 'região' : 'regiões'} com risco alto ou crítico`
     : 'Maior nível de risco nas regiões monitoradas';
   return (
     <View style={[styles.statusCard, { backgroundColor: bg, borderLeftColor: fg }]}>
@@ -222,6 +223,15 @@ export default function DashboardScreen() {
     loadIndicadores();
     loadRegioes();
   }, [loadSummary, loadAlertas, loadIndicadores, loadRegioes]);
+
+  // Live polling every 10 s while the dashboard is focused
+  const pollAll = useCallback(() => {
+    loadSummary();
+    loadAlertas();
+    loadIndicadores();
+    loadRegioes();
+  }, [loadSummary, loadAlertas, loadIndicadores, loadRegioes]);
+  usePolling(pollAll);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

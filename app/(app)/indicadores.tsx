@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { usePolling } from '@hooks/usePolling';
 import { useAppContext } from '@contexts/AppContext';
 import { useIndicadores } from '@hooks/useIndicadores';
 import { useRegioes } from '@hooks/useRegioes';
@@ -249,6 +250,13 @@ export default function IndicadoresScreen() {
     loadReg();
   }, [loadInd, loadReg]);
 
+  // Live polling every 10 s
+  const pollInd = useCallback(() => {
+    loadInd();
+    if (selectedRegiaoId !== null) { loadEst(); loadLeit(); }
+  }, [loadInd, selectedRegiaoId, loadEst, loadLeit]);
+  usePolling(pollInd);
+
   useEffect(() => {
     if (selectedRegiaoId !== null) {
       loadEst();
@@ -373,7 +381,7 @@ export default function IndicadoresScreen() {
             title="Cobertura de estações"
             subtitle={
               estStatus === 'success'
-                ? `${estacoes.length} estação${estacoes.length !== 1 ? 'ões' : ''} vinculada${estacoes.length !== 1 ? 's' : ''} a esta região`
+                ? `${estacoes.length} ${estacoes.length === 1 ? 'estação vinculada' : 'estações vinculadas'} a esta região`
                 : undefined
             }
             loading={estStatus === 'loading'}

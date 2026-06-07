@@ -4,9 +4,8 @@ import {
   Text,
   FlatList,
   ScrollView,
+  TextInput,
   TouchableOpacity,
-  Modal,
-  ActivityIndicator,
   StyleSheet,
   Platform,
   useWindowDimensions,
@@ -15,10 +14,9 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlertas } from '@hooks/useAlertas';
-import { useResolverAlerta } from '@hooks/useResolverAlerta';
 import { useRegioes } from '@hooks/useRegioes';
 import { useAppContext } from '@contexts/AppContext';
-import { useToast } from '@contexts/ToastContext';
+import { usePolling } from '@hooks/usePolling';
 import { LoadingState } from '@components/ui/LoadingState';
 import { ErrorState } from '@components/ui/ErrorState';
 import { EmptyState } from '@components/ui/EmptyState';
@@ -67,7 +65,7 @@ const TIPO_FILTERS: { value: FilterTipo; label: string }[] = [
 
 function statusBadgeColor(s: StatusAlerta): string {
   switch (s) {
-    case 'ABERTO': return '#B71C1C';
+    case 'ABERTO':    return '#B71C1C';
     case 'EM_ANALISE': return '#E65100';
     case 'RESOLVIDO': return '#1B5E20';
     case 'CANCELADO': return '#616161';
@@ -77,11 +75,8 @@ function statusBadgeColor(s: StatusAlerta): string {
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   });
 }
 
@@ -90,15 +85,11 @@ function formatDate(iso: string): string {
 interface AlertCardProps {
   alerta: Alerta;
   regiaoNome: string;
-  canResolve: boolean;
-  onResolvePress: (alerta: Alerta) => void;
 }
 
-function AlertCard({ alerta, regiaoNome, canResolve, onResolvePress }: AlertCardProps) {
+function AlertCard({ alerta, regiaoNome }: AlertCardProps) {
   const borderColor = RiskColors[alerta.nivelRisco] ?? Colors.border;
   const bgColor = RiskBackgrounds[alerta.nivelRisco] ?? Colors.card;
-  const isOpen = alerta.statusAlerta === 'ABERTO' || alerta.statusAlerta === 'EM_ANALISE';
-  const showResolve = canResolve && isOpen;
 
   return (
     <View style={[card.root, { borderLeftColor: borderColor }]}>
@@ -141,22 +132,12 @@ function AlertCard({ alerta, regiaoNome, canResolve, onResolvePress }: AlertCard
         </View>
       )}
 
-      {/* Footer row */}
+      {/* Footer */}
       <View style={card.footer}>
         <View style={card.footerLeft}>
           <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
           <Text style={card.dateText}>{formatDate(alerta.dtAlerta)}</Text>
         </View>
-        {showResolve && (
-          <TouchableOpacity
-            style={card.resolveBtn}
-            onPress={() => onResolvePress(alerta)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="checkmark-circle-outline" size={15} color="#FFFFFF" />
-            <Text style={card.resolveBtnText}>Resolver</Text>
-          </TouchableOpacity>
-        )}
         {alerta.statusAlerta === 'RESOLVIDO' && alerta.dtResolvidoEm && (
           <Text style={card.resolvedText}>
             Resolvido {formatDate(alerta.dtResolvidoEm)}
@@ -269,20 +250,6 @@ const card = StyleSheet.create({
   dateText: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
-  },
-  resolveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#1B5E20',
-    paddingVertical: 5,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: Radius.pill,
-  },
-  resolveBtnText: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   resolvedText: {
     fontSize: FontSize.xs,
@@ -402,149 +369,12 @@ const filter = StyleSheet.create({
   },
 });
 
-// ─── Resolve confirmation modal ───────────────────────────────────────────────
-
-interface ResolveModalProps {
-  alerta: Alerta | null;
-  loading: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-function ResolveModal({ alerta, loading, onConfirm, onCancel }: ResolveModalProps) {
-  if (!alerta) return null;
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={modal.overlay}>
-        <View style={modal.dialog}>
-          <View style={modal.iconWrap}>
-            <Ionicons name="checkmark-circle" size={40} color="#1B5E20" />
-          </View>
-          <Text style={modal.title}>Resolver alerta?</Text>
-          <Text style={modal.body} numberOfLines={3}>
-            "{alerta.titulo}"
-          </Text>
-          <Text style={modal.hint}>
-            O status mudará para <Text style={modal.hintBold}>RESOLVIDO</Text>. Esta ação não pode ser desfeita.
-          </Text>
-          <View style={modal.actions}>
-            <TouchableOpacity
-              style={modal.cancelBtn}
-              onPress={onCancel}
-              disabled={loading}
-              activeOpacity={0.75}
-            >
-              <Text style={modal.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[modal.confirmBtn, loading && modal.confirmBtnDisabled]}
-              onPress={onConfirm}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={modal.confirmText}>Resolver</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const modal = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  dialog: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.xl,
-    width: '100%',
-    maxWidth: 400,
-    alignItems: 'center',
-    ...Shadow.md,
-  },
-  iconWrap: {
-    marginBottom: Spacing.sm,
-  },
-  title: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  body: {
-    fontSize: FontSize.md,
-    color: Colors.text,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-  },
-  hint: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginBottom: Spacing.lg,
-    lineHeight: 19,
-  },
-  hintBold: {
-    fontWeight: '700',
-    color: '#1B5E20',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    width: '100%',
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    backgroundColor: '#1B5E20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmBtnDisabled: {
-    opacity: 0.6,
-  },
-  confirmText: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-});
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function AlertasScreen() {
   const { data: rawAlertas, status, errorMessage, load } = useAlertas();
   const { data: regioes, load: loadRegioes } = useRegioes();
-  const { execute: resolver, status: resolveStatus, reset: resetResolver } = useResolverAlerta();
   const { isGoverno } = useAppContext();
-  const { showToast } = useToast();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
@@ -552,7 +382,7 @@ export default function AlertasScreen() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('TODOS');
   const [filterNivel, setFilterNivel] = useState<FilterNivel>('TODOS');
   const [filterTipo, setFilterTipo] = useState<FilterTipo>('TODOS');
-  const [resolveTarget, setResolveTarget] = useState<Alerta | null>(null);
+  const [searchText, setSearchText] = useState('');
 
   // Build idRegiao → nome map from regions list
   const regiaoMap = useMemo(() => {
@@ -561,13 +391,18 @@ export default function AlertasScreen() {
     return map;
   }, [regioes]);
 
-  // Refresh both lists on focus
+  const loadAll = useCallback(() => {
+    load();
+    loadRegioes();
+  }, [load, loadRegioes]);
+
+  // Load on focus
   useFocusEffect(
-    useCallback(() => {
-      load();
-      loadRegioes();
-    }, [load, loadRegioes]),
+    useCallback(() => { loadAll(); }, [loadAll]),
   );
+
+  // Live polling every 10 s
+  usePolling(loadAll);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -577,50 +412,36 @@ export default function AlertasScreen() {
 
   // Summary counters
   const counters = useMemo(() => ({
-    total: rawAlertas.length,
-    abertos: rawAlertas.filter(a => a.statusAlerta === 'ABERTO').length,
-    emAnalise: rawAlertas.filter(a => a.statusAlerta === 'EM_ANALISE').length,
+    total:      rawAlertas.length,
+    abertos:    rawAlertas.filter(a => a.statusAlerta === 'ABERTO').length,
+    emAnalise:  rawAlertas.filter(a => a.statusAlerta === 'EM_ANALISE').length,
     resolvidos: rawAlertas.filter(a => a.statusAlerta === 'RESOLVIDO').length,
-    criticos: rawAlertas.filter(a => a.nivelRisco === 'CRITICO').length,
-    altos: rawAlertas.filter(a => a.nivelRisco === 'ALTO').length,
+    criticos:   rawAlertas.filter(a => a.nivelRisco === 'CRITICO').length,
+    altos:      rawAlertas.filter(a => a.nivelRisco === 'ALTO').length,
   }), [rawAlertas]);
 
-  // Apply filters
+  // Apply filters + text search
   const filtered = useMemo(() =>
     rawAlertas.filter(a => {
       if (filterStatus !== 'TODOS' && a.statusAlerta !== filterStatus) return false;
       if (filterNivel !== 'TODOS' && a.nivelRisco !== filterNivel) return false;
       if (filterTipo !== 'TODOS' && a.tipoAlerta !== filterTipo) return false;
+      if (searchText.trim()) {
+        const q = searchText.toLowerCase();
+        const match =
+          a.titulo.toLowerCase().includes(q) ||
+          a.descricao.toLowerCase().includes(q) ||
+          (a.recomendacao?.toLowerCase().includes(q) ?? false);
+        if (!match) return false;
+      }
       return true;
     }),
-    [rawAlertas, filterStatus, filterNivel, filterTipo],
+    [rawAlertas, filterStatus, filterNivel, filterTipo, searchText],
   );
-
-  const handleResolvePress = useCallback((alerta: Alerta) => {
-    resetResolver();
-    setResolveTarget(alerta);
-  }, [resetResolver]);
-
-  const handleConfirmResolve = useCallback(async () => {
-    if (!resolveTarget) return;
-    const result = await resolver(resolveTarget.idAlerta);
-    if (result) {
-      setResolveTarget(null);
-      showToast('Alerta resolvido com sucesso.', 'success');
-      load();
-    } else {
-      showToast('Erro ao resolver alerta. Tente novamente.', 'error');
-    }
-  }, [resolveTarget, resolver, showToast, load]);
-
-  const handleCancelResolve = useCallback(() => {
-    setResolveTarget(null);
-    resetResolver();
-  }, [resetResolver]);
 
   const screenTitle = isGoverno ? 'Console de Alertas' : 'Alertas em Acompanhamento';
 
-  // List header: counters + filters
+  // List header: counters + search + filters
   const ListHeader = (
     <View>
       {/* Summary counters */}
@@ -629,34 +450,41 @@ export default function AlertasScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[styles.countersRow, isDesktop && styles.countersRowDesktop]}
       >
-        <CounterChip value={counters.total} label="Total" accent={Colors.primary} />
-        <CounterChip value={counters.abertos} label="Abertos" accent={RiskColors.ALTO} />
+        <CounterChip value={counters.total}     label="Total"      accent={Colors.primary} />
+        <CounterChip value={counters.abertos}   label="Abertos"    accent={RiskColors.ALTO} />
         <CounterChip value={counters.emAnalise} label="Em análise" accent="#E65100" />
         <CounterChip value={counters.resolvidos} label="Resolvidos" accent="#1B5E20" />
-        <CounterChip value={counters.criticos} label="Críticos" accent={RiskColors.CRITICO} />
-        <CounterChip value={counters.altos} label="Altos" accent={RiskColors.ALTO} />
+        <CounterChip value={counters.criticos}  label="Críticos"   accent={RiskColors.CRITICO} />
+        <CounterChip value={counters.altos}     label="Altos"      accent={RiskColors.ALTO} />
       </ScrollView>
+
+      {/* Search box */}
+      <View style={[styles.searchWrap, isDesktop && styles.searchWrapDesktop]}>
+        <Ionicons name="search-outline" size={16} color={Colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Buscar por título, descrição…"
+          placeholderTextColor={Colors.textMuted}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+        {searchText.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchText('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Filters */}
       <View style={styles.filtersSection}>
-        <FilterRow
-          label="Status"
-          options={STATUS_FILTERS}
-          selected={filterStatus}
-          onSelect={setFilterStatus}
-        />
-        <FilterRow
-          label="Nível"
-          options={NIVEL_FILTERS}
-          selected={filterNivel}
-          onSelect={setFilterNivel}
-        />
-        <FilterRow
-          label="Tipo"
-          options={TIPO_FILTERS}
-          selected={filterTipo}
-          onSelect={setFilterTipo}
-        />
+        <FilterRow label="Status" options={STATUS_FILTERS} selected={filterStatus} onSelect={setFilterStatus} />
+        <FilterRow label="Nível"  options={NIVEL_FILTERS}  selected={filterNivel}  onSelect={setFilterNivel} />
+        <FilterRow label="Tipo"   options={TIPO_FILTERS}   selected={filterTipo}   onSelect={setFilterTipo} />
       </View>
 
       {/* Result count */}
@@ -671,11 +499,11 @@ export default function AlertasScreen() {
   );
 
   const isLoading = status === 'loading' && !refreshing && rawAlertas.length === 0;
-  const isError = status === 'error' && rawAlertas.length === 0;
+  const isError   = status === 'error'   && rawAlertas.length === 0;
 
   return (
     <View style={styles.root}>
-      {/* Screen title (mobile: shown in tab header; desktop: shown inline) */}
+      {/* Inline title on desktop */}
       {isDesktop && (
         <View style={styles.desktopHeader}>
           <Text style={styles.desktopTitle}>{screenTitle}</Text>
@@ -683,7 +511,7 @@ export default function AlertasScreen() {
       )}
 
       {isLoading && <LoadingState message="Carregando alertas…" />}
-      {isError && <ErrorState message={errorMessage ?? 'Erro ao carregar alertas.'} onRetry={load} />}
+      {isError   && <ErrorState  message={errorMessage ?? 'Erro ao carregar alertas.'} onRetry={load} />}
 
       {!isLoading && !isError && (
         <FlatList
@@ -693,8 +521,6 @@ export default function AlertasScreen() {
             <AlertCard
               alerta={item}
               regiaoNome={regiaoMap[item.idRegiao] ?? `Região ${item.idRegiao}`}
-              canResolve={isGoverno}
-              onResolvePress={handleResolvePress}
             />
           )}
           ListHeaderComponent={ListHeader}
@@ -718,13 +544,6 @@ export default function AlertasScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-
-      <ResolveModal
-        alerta={resolveTarget}
-        loading={resolveStatus === 'loading'}
-        onConfirm={handleConfirmResolve}
-        onCancel={handleCancelResolve}
-      />
     </View>
   );
 }
@@ -735,7 +554,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  // Desktop inline title
   desktopHeader: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
@@ -751,7 +569,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
-  // Summary counters row
   countersRow: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
@@ -760,7 +577,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
 
-  // Filters container
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 4,
+    gap: Spacing.xs,
+  },
+  searchWrapDesktop: {
+    marginHorizontal: 0,
+  },
+  searchIcon: {},
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: 0,
+  },
+
   filtersSection: {
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
@@ -771,7 +611,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
 
-  // Result count
   resultCount: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
@@ -783,7 +622,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
 
-  // FlatList content
   listContent: {
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.xxl,
