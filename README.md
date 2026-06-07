@@ -1,74 +1,96 @@
-# Amanajé — GS Mobile Application
+# Amanajé — Monitoramento Ambiental e IoT
 
-Monitoramento ambiental e IoT para regiões de risco no Brasil.
-Expo SDK 56 · React Native 0.85.3 · TypeScript · Expo Router
+Frontend web construído com **Expo / React Native Web / Expo Router**.  
+Consome a API Java hospedada no Render: `https://gs-java-advanced.onrender.com`
 
 ---
 
-## Desenvolvimento local
+## Como executar localmente
 
 ```bash
 npm install
-npm start           # Metro dev server (Expo Go)
-npm run web         # Expo web dev server (browser)
+npx expo start --web --port 8082
 ```
 
-## Verificação e build
+Acesse `http://localhost:8082` no navegador.
+
+> **CORS:** a API permite requisições da origem `http://localhost:8082`. Sempre use esta porta no desenvolvimento local.
+
+---
+
+## Build web
 
 ```bash
-npx tsc --noEmit              # TypeScript type-check
-npx expo export --platform web  # Build estático para web (→ dist/)
-npx serve dist                  # Preview local do build
+npm run build:web
 ```
 
-## Deploy — Vercel
+Gera o build estático em `dist/`. Para pré-visualizar localmente:
 
-O projeto usa `vercel.json` para configurar o Expo Router como SPA:
-
-```json
-{
-  "buildCommand": "npx expo export -p web",
-  "outputDirectory": "dist",
-  "cleanUrls": true,
-  "rewrites": [{ "source": "/:path*", "destination": "/" }]
-}
+```bash
+npm run preview:web
+# ou diretamente:
+npx serve dist
 ```
-
-### Tornar o deploy público (Deployment Protection)
-
-Por padrão a Vercel protege deploys com autenticação. Para projetos de demonstração abertos:
-
-1. Abra o projeto em vercel.com
-2. Vá em **Settings → Deployment Protection**
-3. Desabilite "Vercel Authentication" (ou selecione "Only Preview Deployments")
-4. Salve e redeploye
-
-Sem essa configuração, visitantes externos verão uma tela de login da Vercel.
 
 ---
 
-## Arquitetura
+## Deploy na Vercel
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Roteamento | Expo Router (file-based) |
-| Charts | Victory Native XL + Skia |
-| SVG web-compatible | `SvgDonut` (react-native-svg) |
-| API | fetch nativo + AbortController timeout |
-| Estado | hooks locais (sem Redux/Zustand) |
+### Configurações no dashboard da Vercel
 
-## Backend
+| Parâmetro | Valor |
+|-----------|-------|
+| Framework Preset | **Other** |
+| Build Command | `npx expo export -p web` |
+| Output Directory | `dist` |
+| Install Command | `npm install` |
 
-API REST: `https://gs-java-advanced.onrender.com`
+### Variáveis de ambiente
 
-- Cold start: até 60 s após ociosidade (Render free tier).
-- O app mostra uma tela de "Aguardando servidor…" durante o aquecimento.
-- Endpoints relevantes: `/api/regioes`, `/api/estacoes/regiao/:id`, `/api/regioes/:id/leituras`, `/api/alertas`, `/api/dashboard/summary`, `/api/indicadores-regionais`.
+Nenhuma variável de ambiente é obrigatória para o deploy. A URL da API está definida diretamente em `src/constants/api.ts`:
 
-## Variáveis de ambiente
+```
+https://gs-java-advanced.onrender.com
+```
 
-Nenhuma variável de ambiente é necessária. A URL da API está em `src/constants/api.ts`.
+### vercel.json
+
+O arquivo `vercel.json` já está configurado na raiz do projeto. As `rewrites` garantem que o refresh direto em rotas aninhadas (ex.: `/regioes/1`, `/alertas`) não resulte em 404 no Vercel, redirecionando tudo para `index.html` conforme o Expo Router necessita.
 
 ---
 
-GS · FIAP 2025
+## Backend — cold start
+
+A API roda no plano gratuito do **Render** e é desligada após ~15 minutos de inatividade.
+
+- O primeiro acesso após inatividade pode levar **30–60 segundos**.
+- A tela inicial do app (`/`) faz uma requisição de warm-up em `GET /api/health` com timeout de 65 segundos e exibe `"Aguardando servidor…"` ao usuário durante esse período.
+- Após a conexão ser estabelecida, o usuário é redirecionado para a tela de seleção de contexto.
+
+---
+
+## Estrutura de rotas
+
+| Rota | Tela |
+|------|------|
+| `/` | Warm-up + redirect |
+| `/context-selector` | Seleção de perfil de acesso |
+| `/(app)/dashboard` | Painel principal |
+| `/(app)/regioes` | Lista de regiões |
+| `/(app)/regioes/nova` | Cadastrar região |
+| `/(app)/regioes/[id]` | Detalhe da região |
+| `/(app)/regioes/[id]/editar` | Editar região |
+| `/(app)/alertas` | Triagem de alertas |
+| `/(app)/indicadores` | Indicadores regionais |
+| `/(app)/estacoes` | Estações IoT |
+
+---
+
+## Tecnologias
+
+- Expo SDK 56 / React Native 0.85.3
+- Expo Router (file-based routing)
+- TypeScript strict
+- `@shopify/react-native-skia` (gráficos)
+- `victory-native` (charts)
+- `react-native-svg`
