@@ -8,7 +8,7 @@ import { Card } from '@components/ui';
 import { Colors } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 import type { SensorSeries } from '@utils/sensorTransforms';
-import { scaledSparklinePoints } from '@utils/sensorTransforms';
+import { SvgLineChart } from './SvgLineChart';
 
 // ─── Value formatting ─────────────────────────────────────────────────────────
 
@@ -34,82 +34,6 @@ function displayUnit(unit: string): string {
   }
 }
 
-// ─── Bar chart with x-axis timestamps ────────────────────────────────────────
-
-interface BarChartProps {
-  series: SensorSeries;
-  color: string;
-  maxBars?: number;
-}
-
-function BarChart({ series, color, maxBars = 30 }: BarChartProps) {
-  const scaled = scaledSparklinePoints(series, maxBars);
-  if (scaled.length < 2) return null;
-
-  const pts = series.points.slice(-maxBars);
-  const firstLabel = pts[0]?.label ?? '';
-  const lastLabel  = pts[pts.length - 1]?.label ?? '';
-  const midLabel   = pts.length >= 8 ? (pts[Math.floor(pts.length / 2)]?.label ?? '') : '';
-
-  return (
-    <View style={chart.container}>
-      {/* Bars */}
-      <View style={chart.chartArea}>
-        {scaled.map((v, i) => (
-          <View
-            key={i}
-            style={[
-              chart.bar,
-              {
-                height: Math.max(4, v * 64),
-                backgroundColor: color,
-                opacity: 0.45 + v * 0.55,
-              },
-            ]}
-          />
-        ))}
-      </View>
-      {/* X-axis timestamps */}
-      <View style={chart.axisRow}>
-        <Text style={chart.axisLabel} numberOfLines={1}>{firstLabel}</Text>
-        {midLabel ? <Text style={chart.axisLabel} numberOfLines={1}>{midLabel}</Text> : null}
-        <Text style={chart.axisLabel} numberOfLines={1}>{lastLabel}</Text>
-      </View>
-    </View>
-  );
-}
-
-const chart = StyleSheet.create({
-  container: {
-    marginTop: Spacing.sm,
-  },
-  chartArea: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 64,
-    gap: 2,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    paddingBottom: 2,
-  },
-  bar: {
-    flex: 1,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-  },
-  axisRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    paddingHorizontal: 1,
-  },
-  axisLabel: {
-    fontSize: 9,
-    color: Colors.textMuted,
-    letterSpacing: 0.1,
-    maxWidth: 72,
-  },
-});
 
 // ─── Single series card ───────────────────────────────────────────────────────
 
@@ -175,8 +99,8 @@ function SeriesCard({ series, color }: SeriesCardProps) {
         ) : null}
       </View>
 
-      {/* Bar chart with timestamps */}
-      <BarChart series={series} color={color} />
+      {/* Line chart with timestamps */}
+      <SvgLineChart points={series.points} color={color} unit={series.unit} />
     </View>
   );
 }
