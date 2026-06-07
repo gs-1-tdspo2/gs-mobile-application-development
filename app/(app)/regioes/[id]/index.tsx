@@ -35,6 +35,7 @@ import {
 } from '@constants/enums';
 import type { StatusEstacao } from '@constants/enums';
 import { SensorReadingSection } from '@components/charts';
+import { ObservacaoClimaticaCard } from '@components/clima';
 import { extractSensorAnalysis } from '@utils/sensorTransforms';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -420,15 +421,9 @@ export default function DetalheRegiaoScreen() {
           </View>
 
           {/* ── Observações climáticas ───────────────────────────────────────────── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Observações climáticas</Text>
-            <View style={styles.climaUnavail}>
-              <Ionicons name="cloud-offline-outline" size={22} color={Colors.textMuted} />
-              <Text style={styles.climaUnavailText}>
-                Observações climáticas externas ainda não estão disponíveis pela API.
-              </Text>
-            </View>
-          </View>
+          {!isNaN(regiaoId) && (
+            <ObservacaoClimaticaCard idRegiao={regiaoId} />
+          )}
 
           {/* ── Metadados ────────────────────────────────────────────────────────── */}
           <View style={styles.card}>

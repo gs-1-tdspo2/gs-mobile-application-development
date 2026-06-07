@@ -34,6 +34,9 @@ export const API_ENDPOINTS = {
   ALERTAS: '/api/alertas',
   ALERTA_RESOLVER: (id: number) => `/api/alertas/${id}/resolver`,
 
+  // Observações Climáticas
+  REGIAO_OBS_CLIMATICA_ULTIMA: (id: number) => `/api/regioes/${id}/observacoes-climaticas/ultima`,
+
   // Dashboard & Indicadores
   DASHBOARD_SUMMARY: '/api/dashboard/summary',
   INDICADORES_REGIONAIS: '/api/indicadores-regionais',

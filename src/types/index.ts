@@ -126,19 +126,20 @@ export interface CreateLeituraRequest {
 }
 
 // ─── Observação Climática ─────────────────────────────────────────────────────
-// External climate observations from TB_AMANAJE_OBS_CLIM — separate from IoT readings.
+// GET /api/regioes/{id}/observacoes-climaticas/ultima — field names match live API JSON.
 export interface ObservacaoClimatica {
-  id: number;
-  regiaoId: number;
-  fonte: string;
-  temperaturaC?: number;
-  umidadePct?: number;
-  precipitacaoMm?: number;
-  ventoKmh?: number;
-  pressaoHpa?: number;
-  radiacaoSolar?: number;
-  indiceUv?: number;
-  dtObs: string;
+  idObservacao?: number;
+  idRegiao?: number;
+  fonte?: string;
+  temperatura?: number | null;
+  umidade?: number | null;
+  precipitacao?: number | null;
+  vento?: number | null;
+  pressaoHpa?: number | null;
+  radiacaoSolar?: number | null;
+  indiceUv?: number | null;
+  dtObservacao?: string;
+  dtCriadoEm?: string;
 }
 
 // ─── Risco ────────────────────────────────────────────────────────────────────

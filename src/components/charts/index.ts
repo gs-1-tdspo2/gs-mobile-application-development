@@ -9,5 +9,6 @@ export { RegionalRankingBar } from './RegionalRankingBar';
 export { RegionSelector } from './RegionSelector';
 export { SensorDimensionCard, SensorDimensionGrid } from './SensorDimensionCard';
 export { SensorReadingSection } from './SensorReadingSection';
+export { SensorHistoryCard } from './SensorHistoryCard';
 export type { FilterOption } from './FilterBar';
 export type { SensorDimension } from './SensorDimensionCard';
