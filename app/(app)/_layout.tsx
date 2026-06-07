@@ -211,6 +211,7 @@ export default function AppLayout() {
         name="estacoes"
         options={{
           title: 'Estações',
+          headerShown: false,
           tabBarIcon: ({ focused, color }) =>
             tabIcon(focused, 'radio', 'radio-outline')({ color: color as string }),
         }}

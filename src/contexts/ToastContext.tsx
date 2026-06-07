@@ -82,8 +82,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <View style={styles.root}>
         {children}
 
-        {/* Toast stack — absolute over all content; pointerEvents in style prevents blocking user interaction */}
-        <View style={styles.stack}>
+        {/* Toast stack — absolute over all content; pointerEvents="none" prevents blocking user interaction */}
+        <View pointerEvents="none" style={styles.stack}>
           {toasts.map(t => (
             <ToastBanner key={t.id} toast={t} onHide={() => hide(t.id)} />
           ))}
@@ -102,7 +102,6 @@ const styles = StyleSheet.create({
     right: Spacing.md,
     gap: Spacing.sm,
     zIndex: 9999,
-    pointerEvents: 'none' as const,
   },
   banner: {
     flexDirection: 'row',

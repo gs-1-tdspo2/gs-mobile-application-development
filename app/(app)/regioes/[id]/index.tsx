@@ -518,9 +518,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   contentDesktop: {
-    maxWidth: 800,
-    alignSelf: 'center' as const,
-    width: '100%',
+    paddingHorizontal: Spacing.xl,
   },
 
   center: {

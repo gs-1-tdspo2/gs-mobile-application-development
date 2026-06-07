@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'expo-router';
 import { usePolling } from '@hooks/usePolling';
 import { useAppContext } from '@contexts/AppContext';
 import { useIndicadores } from '@hooks/useIndicadores';
@@ -25,8 +26,7 @@ import {
   StatusEstacaoLabels,
 } from '@constants/enums';
 import type { NivelRisco, CategoriaRisco } from '@constants/enums';
-import { RegionSelector } from '@components/charts/RegionSelector';
-import { FilterSelect, FilterPanel } from '@components/filters';
+import { FilterSelect, FilterPanel, HybridSelect } from '@components/filters';
 import { SensorDimensionGrid } from '@components/charts/SensorDimensionCard';
 import { SensorReadingSection } from '@components/charts/SensorReadingSection';
 import { ChartCard } from '@components/charts/ChartCard';
@@ -128,7 +128,7 @@ const st = StyleSheet.create({
 // ─── Indicator row ────────────────────────────────────────────────────────────
 
 function IndicadorRow({
-  item, isLast,
+  item, isLast, onPress,
 }: {
   item: {
     nomeRegiao: string; cidade: string; estado: string;
@@ -136,12 +136,13 @@ function IndicadorRow({
     nivelRiscoMedio: NivelRisco; quantidadeAlertasAtivos: number;
   };
   isLast: boolean;
+  onPress?: () => void;
 }) {
   const riskColor = RiskColors[item.nivelRiscoMedio];
   const riskBg    = RiskBackgrounds[item.nivelRiscoMedio];
 
-  return (
-    <View style={[ind.row, isLast && ind.rowLast]}>
+  const inner = (
+    <>
       <View style={ind.rowLeft}>
         <Text style={ind.nome} numberOfLines={1}>{item.nomeRegiao}</Text>
         <Text style={ind.sub}>{item.cidade} · {item.estado}</Text>
@@ -163,9 +164,19 @@ function IndicadorRow({
             {item.quantidadeAlertasAtivos} alerta{item.quantidadeAlertasAtivos > 1 ? 's' : ''}
           </Text>
         )}
+        {onPress && <Ionicons name="chevron-forward" size={13} color={Colors.textMuted} />}
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity style={[ind.row, isLast && ind.rowLast]} onPress={onPress} activeOpacity={0.75}>
+        {inner}
+      </TouchableOpacity>
+    );
+  }
+  return <View style={[ind.row, isLast && ind.rowLast]}>{inner}</View>;
 }
 
 const ind = StyleSheet.create({
@@ -196,11 +207,13 @@ export default function IndicadoresScreen() {
   const { isGoverno } = useAppContext();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
+  const router = useRouter();
 
   // ── Data hooks (unconditional) ────────────────────────────────────────────
   const { status: indStatus, data: indicadores, errorMessage: indError, load: loadInd } = useIndicadores();
   const { status: regStatus, data: regioes, errorMessage: regError, load: loadReg } = useRegioes();
   const [selectedRegiaoId, setSelectedRegiaoId] = useState<number | null>(null);
+  const [sensorRegiaoText, setSensorRegiaoText] = useState('');
   const { status: estStatus, data: estacoes, errorMessage: estError, load: loadEst } = useEstacoes(selectedRegiaoId);
   const { status: leitStatus, data: leituras, errorMessage: leitError, load: loadLeit } = useLeituras(selectedRegiaoId);
 
@@ -209,10 +222,10 @@ export default function IndicadoresScreen() {
   const [searchText,     setSearchText]     = useState('');
   const [filterTipo,     setFilterTipo]     = useState<CategoriaRisco | 'TODOS'>('TODOS');
   const [filterNivel,    setFilterNivel]    = useState<NivelRisco | 'TODOS'>('TODOS');
-  const [filterEstado,   setFilterEstado]   = useState('TODOS');
-  const [filterCidade,   setFilterCidade]   = useState('TODOS');
+  const [filterEstado,   setFilterEstado]   = useState('');
+  const [filterCidade,   setFilterCidade]   = useState('');
 
-  useEffect(() => { setFilterCidade('TODOS'); }, [filterEstado]);
+  useEffect(() => { setFilterCidade(''); }, [filterEstado]);
 
   // ── Dynamic filter options ────────────────────────────────────────────────
   const availableEstados = useMemo(() => {
@@ -223,44 +236,61 @@ export default function IndicadoresScreen() {
     return Array.from(set).sort();
   }, [indicadores]);
 
-  const estadoFilterOptions = useMemo<{ value: string; label: string }[]>(() => {
+  const estadoOptions = useMemo<{ value: string; label: string }[]>(() => {
     if (availableEstados.length <= 1) return [];
-    return [
-      { value: 'TODOS', label: 'Todos' },
-      ...availableEstados.map(uf => ({ value: uf, label: uf })),
-    ];
+    return availableEstados.map(uf => ({ value: uf, label: uf }));
   }, [availableEstados]);
 
   const availableCidades = useMemo(() => {
     const set = new Set<string>();
     indicadores.forEach(i => {
       if (i.idRegiao === null) return;
-      if (filterEstado !== 'TODOS' && i.estado !== filterEstado) return;
+      if (filterEstado.trim() && !i.estado.toLowerCase().includes(filterEstado.toLowerCase())) return;
       if (i.cidade) set.add(i.cidade);
     });
     return Array.from(set).sort();
   }, [indicadores, filterEstado]);
 
-  const cidadeFilterOptions = useMemo<{ value: string; label: string }[]>(() => {
+  const cidadeOptions = useMemo<{ value: string; label: string }[]>(() => {
     if (availableCidades.length <= 1) return [];
-    return [
-      { value: 'TODOS', label: 'Todas' },
-      ...availableCidades.map(c => ({ value: c, label: c })),
-    ];
+    return availableCidades.map(c => ({ value: c, label: c }));
   }, [availableCidades]);
 
   const hasFilters = !!(
     searchText.trim() ||
     filterTipo !== 'TODOS' || filterNivel !== 'TODOS' ||
-    filterEstado !== 'TODOS' || filterCidade !== 'TODOS'
+    filterEstado.trim() || filterCidade.trim()
   );
 
   const clearFilters = useCallback(() => {
     setSearchText('');
     setFilterTipo('TODOS');
     setFilterNivel('TODOS');
-    setFilterEstado('TODOS');
-    setFilterCidade('TODOS');
+    setFilterEstado('');
+    setFilterCidade('');
+  }, []);
+
+  const sensorRegiaoOptions = useMemo(() =>
+    regioes
+      .filter(r => r.stAtivo !== 'N')
+      .map(r => ({ value: String(r.idRegiao), label: `${r.nome} (${r.estado})` })),
+    [regioes],
+  );
+
+  const handleSensorRegiaoChange = useCallback((t: string) => {
+    setSensorRegiaoText(t);
+    if (!t.trim()) setSelectedRegiaoId(null);
+  }, []);
+
+  const handleSensorRegiaoSelect = useCallback((value: string, label: string) => {
+    if (!value) return;
+    setSelectedRegiaoId(Number(value));
+    setSensorRegiaoText(label);
+  }, []);
+
+  const handleClearSensorRegiao = useCallback(() => {
+    setSelectedRegiaoId(null);
+    setSensorRegiaoText('');
   }, []);
 
   // ── Filtered indicadores (excludes national aggregate) ───────────────────
@@ -269,14 +299,12 @@ export default function IndicadoresScreen() {
       if (i.idRegiao === null) return false; // skip national aggregate
       if (filterTipo   !== 'TODOS' && i.tipoRisco      !== filterTipo)   return false;
       if (filterNivel  !== 'TODOS' && i.nivelRiscoMedio !== filterNivel)  return false;
-      if (filterEstado !== 'TODOS' && i.estado          !== filterEstado) return false;
-      if (filterCidade !== 'TODOS' && i.cidade          !== filterCidade) return false;
+      if (filterEstado.trim() && !i.estado.toLowerCase().includes(filterEstado.toLowerCase())) return false;
+      if (filterCidade.trim() && !i.cidade.toLowerCase().includes(filterCidade.toLowerCase())) return false;
       if (searchText.trim()) {
         const q = searchText.toLowerCase();
-        const nome   = (i.nomeRegiao ?? '').toLowerCase();
-        const cidade = i.cidade.toLowerCase();
-        const estado = i.estado.toLowerCase();
-        if (!nome.includes(q) && !cidade.includes(q) && !estado.includes(q)) return false;
+        const nome = (i.nomeRegiao ?? '').toLowerCase();
+        if (!nome.includes(q)) return false;
       }
       return true;
     });
@@ -402,7 +430,7 @@ export default function IndicadoresScreen() {
               style={styles.searchInput}
               value={searchText}
               onChangeText={setSearchText}
-              placeholder="Buscar por região, cidade ou estado…"
+              placeholder="Buscar por nome de região…"
               placeholderTextColor={Colors.textMuted}
               returnKeyType="search"
               clearButtonMode="while-editing"
@@ -431,20 +459,22 @@ export default function IndicadoresScreen() {
               selected={filterNivel}
               onSelect={setFilterNivel}
             />
-            {estadoFilterOptions.length > 0 && (
-              <FilterSelect
+            {estadoOptions.length > 0 && (
+              <HybridSelect
                 label="Estado"
-                options={estadoFilterOptions}
-                selected={filterEstado}
-                onSelect={setFilterEstado}
+                placeholder="Buscar estado…"
+                options={estadoOptions}
+                value={filterEstado}
+                onChange={setFilterEstado}
               />
             )}
-            {cidadeFilterOptions.length > 0 && (
-              <FilterSelect
+            {cidadeOptions.length > 0 && (
+              <HybridSelect
                 label="Cidade"
-                options={cidadeFilterOptions}
-                selected={filterCidade}
-                onSelect={setFilterCidade}
+                placeholder="Buscar cidade…"
+                options={cidadeOptions}
+                value={filterCidade}
+                onChange={setFilterCidade}
               />
             )}
           </FilterPanel>
@@ -460,9 +490,9 @@ export default function IndicadoresScreen() {
           {/* Count */}
           {indStatus === 'success' && (
             <Text style={styles.countText}>
-              {hasFilters
-                ? `${filteredIndicadores.length} de ${indicadores.filter(i => i.idRegiao !== null).length} regiões`
-                : `${filteredIndicadores.length} ${filteredIndicadores.length === 1 ? 'região' : 'regiões'}`}
+              {filteredIndicadores.length === 1
+                ? '1 indicador encontrado'
+                : `${filteredIndicadores.length} indicadores encontrados`}
             </Text>
           )}
         </View>
@@ -491,6 +521,7 @@ export default function IndicadoresScreen() {
               key={item.idIndicador}
               item={item}
               isLast={i === rankingRows.length - 1}
+              onPress={() => router.push(`/regioes/${item.idRegiao}`)}
             />
           ))}
         </View>
@@ -500,18 +531,26 @@ export default function IndicadoresScreen() {
       {nivelDistribution.length > 0 && (
         <ChartCard
           title="Distribuição por nível de risco"
-          subtitle="Contagem de regiões por nível de vulnerabilidade atual."
+          subtitle="Contagem de regiões por nível de vulnerabilidade. Clique para filtrar."
         >
-          <HorizontalBarChart data={nivelDistribution} />
+          <HorizontalBarChart
+            data={nivelDistribution}
+            onBarPress={(key) => setFilterNivel(prev => prev === key ? 'TODOS' : key as NivelRisco)}
+            activeKey={filterNivel !== 'TODOS' ? filterNivel : undefined}
+          />
         </ChartCard>
       )}
 
       {tipoDistribution.length > 0 && (
         <ChartCard
           title="Distribuição por tipo de risco"
-          subtitle="Contagem de regiões por categoria de ameaça principal."
+          subtitle="Contagem de regiões por categoria de ameaça. Clique para filtrar."
         >
-          <HorizontalBarChart data={tipoDistribution} />
+          <HorizontalBarChart
+            data={tipoDistribution}
+            onBarPress={(key) => setFilterTipo(prev => prev === key ? 'TODOS' : key as CategoriaRisco)}
+            activeKey={filterTipo !== 'TODOS' ? filterTipo : undefined}
+          />
         </ChartCard>
       )}
 
@@ -524,26 +563,38 @@ export default function IndicadoresScreen() {
         <View style={styles.sectionDividerLine} />
       </View>
 
-      <Text style={styles.sensorHint}>
-        {isGoverno
-          ? 'Selecione uma região para visualizar leituras IoT, cobertura de estações e telemetria operacional.'
-          : 'Selecione uma região para visualizar as leituras ambientais de sensores de campo.'}
-      </Text>
-
-      {/* ── Region selector ──────────────────────────────────────────────── */}
-      {regStatus === 'success' && regioes.length > 0 ? (
-        <RegionSelector
-          regioes={regioes}
-          selectedId={selectedRegiaoId}
-          onSelect={id => setSelectedRegiaoId(id)}
-        />
-      ) : regStatus === 'loading' ? (
+      {/* ── Sensor region selector ───────────────────────────────────────── */}
+      {regStatus === 'loading' && regioes.length === 0 ? (
         <Text style={styles.loadingText}>Carregando regiões…</Text>
       ) : regStatus === 'error' ? (
         <View style={styles.callout}>
           <Text style={styles.calloutText}>Erro ao carregar regiões: {regError}</Text>
         </View>
-      ) : null}
+      ) : (
+        <View style={[styles.sensorRegiaoWrap, isWide && styles.sensorRegiaoWrapDesktop]}>
+          <HybridSelect
+            label="Região para análise dos sensores"
+            placeholder="Digite ou selecione uma região"
+            options={sensorRegiaoOptions}
+            value={sensorRegiaoText}
+            onChange={handleSensorRegiaoChange}
+            onOptionSelect={handleSensorRegiaoSelect}
+            disabled={regioes.length === 0}
+          />
+          {selectedRegiaoId !== null && (
+            <TouchableOpacity onPress={handleClearSensorRegiao} style={styles.clearSensorRegBtn} activeOpacity={0.75}>
+              <Ionicons name="close-circle-outline" size={13} color={Colors.primary} />
+              <Text style={styles.clearSensorRegText}>Limpar seleção</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {selectedRegiaoId === null && regStatus !== 'loading' && regStatus !== 'error' && (
+        <Text style={styles.sensorEmptyText}>
+          Selecione uma região para visualizar a telemetria dos sensores.
+        </Text>
+      )}
 
       {/* ── Sensor dimension reference cards ─────────────────────────────── */}
       <View style={styles.sensorSectionHeader}>
@@ -755,11 +806,29 @@ const styles = StyleSheet.create({
   },
 
   // Sensor section
-  sensorHint: {
+  sensorRegiaoWrap: {
+    marginBottom: Spacing.sm,
+  },
+  sensorRegiaoWrapDesktop: {
+    maxWidth: 400,
+  },
+  clearSensorRegBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: Spacing.xs,
+  },
+  clearSensorRegText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  sensorEmptyText: {
     fontSize: FontSize.sm,
     color: Colors.textMuted,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     lineHeight: 19,
+    fontStyle: 'italic',
   },
   loadingText: {
     fontSize: FontSize.sm,

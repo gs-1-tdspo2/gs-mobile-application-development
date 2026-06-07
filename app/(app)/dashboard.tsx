@@ -29,9 +29,8 @@ import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 import {
   NivelRiscoLabels,
   CategoriaRiscoLabels,
-  StatusAlertaLabels,
 } from '@constants/enums';
-import type { NivelRisco, CategoriaRisco, StatusAlerta } from '@constants/enums';
+import type { NivelRisco, CategoriaRisco } from '@constants/enums';
 import type { DashboardSummary } from '@/types';
 import {
   aggregateByNivelRisco,
@@ -75,13 +74,6 @@ const TIPO_OPTIONS: FilterOption<CategoriaRisco>[] = [
   { key: 'TEMPESTADE', label: CategoriaRiscoLabels.TEMPESTADE },
   { key: 'QUALIDADE_AR', label: CategoriaRiscoLabels.QUALIDADE_AR },
   { key: 'DESLIZAMENTO', label: CategoriaRiscoLabels.DESLIZAMENTO },
-];
-
-const STATUS_OPTIONS: FilterOption<StatusAlerta>[] = [
-  { key: null, label: 'Todos' },
-  { key: 'ABERTO', label: StatusAlertaLabels.ABERTO },
-  { key: 'EM_ANALISE', label: StatusAlertaLabels.EM_ANALISE },
-  { key: 'RESOLVIDO', label: StatusAlertaLabels.RESOLVIDO },
 ];
 
 // ─── KPI builders ─────────────────────────────────────────────────────────────
@@ -211,7 +203,6 @@ export default function DashboardScreen() {
 
   const [nivelFilter, setNivelFilter] = useState<NivelRisco | null>(null);
   const [tipoFilter, setTipoFilter] = useState<CategoriaRisco | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusAlerta | null>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: 'Dashboard' });
@@ -255,10 +246,9 @@ export default function DashboardScreen() {
     () => buildRegionalRanking(indicadores, nivelFilter, tipoFilter),
     [indicadores, nivelFilter, tipoFilter],
   );
-  // Status filter controls only the status bar chart
   const alertStatusBars = useMemo(
-    () => aggregateAlertasByStatusBars(alertas, statusFilter),
-    [alertas, statusFilter],
+    () => aggregateAlertasByStatusBars(alertas, null),
+    [alertas],
   );
   // Alert type chart is unfiltered — shows full distribution
   const alertTypeBars = useMemo(() => aggregateAlertasByTipo(alertas), [alertas]);
@@ -456,21 +446,11 @@ export default function DashboardScreen() {
           <View style={isWide ? styles.col : styles.colFull}>
             <ChartCard
               title="Status dos Alertas"
-              subtitle={statusFilter
-                ? `Mostrando: ${StatusAlertaLabels[statusFilter]}`
-                : 'Ciclo de vida dos alertas registrados'}
+              subtitle="Ciclo de vida dos alertas registrados"
               loading={alertasLoading}
               error={alertasErr}
               empty={!alertasLoading && alertStatusBars.length === 0}
               emptyMessage="Sem alertas registrados."
-              filterSlot={
-                <FilterBar<StatusAlerta>
-                  label="Filtrar por status"
-                  options={STATUS_OPTIONS}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                />
-              }
             >
               <HorizontalBarChart
                 data={alertStatusBars}
