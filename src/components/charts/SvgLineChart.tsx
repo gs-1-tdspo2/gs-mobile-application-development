@@ -104,6 +104,11 @@ export function SvgLineChart({ points, color, unit, height = 152 }: Props) {
   for (let i = 0; i < points.length; i += xStep) xIdxs.push(i);
   if (xIdxs[xIdxs.length - 1] !== points.length - 1) xIdxs.push(points.length - 1);
 
+  // If labels are "DD/MM HH:mm", show date once in the corner and only time on ticks
+  const hasDatePrefix = points[0].label.includes(' ');
+  const cornerDate = hasDatePrefix ? points[0].label.split(' ')[0] : null;
+  const tickLabel = (label: string) => hasDatePrefix ? (label.split(' ')[1] ?? label) : label;
+
   const gradId = `glg${uid}`;
 
   // Nearest point by SVG x coordinate
@@ -195,16 +200,26 @@ export function SvgLineChart({ points, color, unit, height = 152 }: Props) {
             <Circle key={i} cx={px(i)} cy={py(p.value)} r={2.8} fill={color} />
           ))}
 
-          {/* X-axis labels */}
-          {xIdxs.map(i => (
+          {/* X-axis labels — date once at far left, time-only on ticks */}
+          {cornerDate && (
             <SvgText
-              key={i}
-              x={px(i)} y={height - 4}
-              textAnchor="middle" fontSize={9} fill={Colors.textMuted}
+              x={PAD.l} y={height - 4}
+              textAnchor="start" fontSize={9} fill={Colors.textMuted}
             >
-              {points[i].label}
+              {cornerDate}
             </SvgText>
-          ))}
+          )}
+          {xIdxs
+            .filter(i => !(cornerDate && i === 0))
+            .map(i => (
+              <SvgText
+                key={i}
+                x={px(i)} y={height - 4}
+                textAnchor="middle" fontSize={9} fill={Colors.textMuted}
+              >
+                {tickLabel(points[i].label)}
+              </SvgText>
+            ))}
 
           {/* Native: full-area tap overlay (doesn't exist on web — handled by onMouseMove) */}
           {Platform.OS !== 'web' && (
