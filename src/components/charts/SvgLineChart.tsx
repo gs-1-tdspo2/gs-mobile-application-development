@@ -1,14 +1,16 @@
 /**
  * SvgLineChart — cross-platform line + area chart built on react-native-svg.
  * Gradient area fill · connected dots · Y-axis grid · X-axis timestamps.
+ * Hover tooltip on web (onMouseMove) · tap tooltip on native (SVG Rect press).
  * Works on iOS, Android, and Expo Web without Skia.
  */
 import { useId, useState } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import Svg, {
   Path,
   Circle,
   G,
+  Rect,
   Defs,
   LinearGradient,
   Stop,
@@ -19,8 +21,11 @@ import type { SensorPoint } from '@utils/sensorTransforms';
 import { Colors } from '@constants/colors';
 
 const PAD = { l: 44, r: 10, t: 6, b: 22 } as const;
+const TIP_W = 98;
+const TIP_H = 42;
+const TIP_GAP = 7;
 
-// ─── Y-axis helpers ───────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function niceGridVals(dMin: number, dMax: number, steps = 4): number[] {
   if (dMin === dMax) { dMin -= 1; dMax += 1; }
@@ -46,6 +51,16 @@ function yLabel(v: number, unit: string): string {
   return Math.round(v).toString();
 }
 
+function fmtValue(v: number, unit: string): string {
+  if (unit === '°') return `${v.toFixed(2)}°`;
+  if (unit === 'índice') return v.toFixed(3);
+  if (unit === 'hPa') return `${v.toFixed(1)} hPa`;
+  if (unit === '%') return `${v.toFixed(1)}%`;
+  if (unit === 'cm') return `${v.toFixed(1)} cm`;
+  if (unit === 'µg/m³') return `${v.toFixed(0)} µg/m³`;
+  return `${v} ${unit}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -55,10 +70,11 @@ interface Props {
   height?: number;
 }
 
-export function SvgLineChart({ points, color, unit, height = 148 }: Props) {
+export function SvgLineChart({ points, color, unit, height = 152 }: Props) {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9]/g, '');
   const [w, setW] = useState(0);
+  const [tipIdx, setTipIdx] = useState<number | null>(null);
 
   if (points.length < 2) return null;
 
@@ -83,7 +99,6 @@ export function SvgLineChart({ points, color, unit, height = 148 }: Props) {
     `${linePath} L ${px(points.length - 1).toFixed(1)},${axisY.toFixed(1)}` +
     ` L ${PAD.l},${axisY.toFixed(1)} Z`;
 
-  // X-axis: at most 7 evenly-spaced labels
   const xStep = Math.max(1, Math.ceil(points.length / 7));
   const xIdxs: number[] = [];
   for (let i = 0; i < points.length; i += xStep) xIdxs.push(i);
@@ -91,8 +106,46 @@ export function SvgLineChart({ points, color, unit, height = 148 }: Props) {
 
   const gradId = `glg${uid}`;
 
+  // Nearest point by SVG x coordinate
+  const nearestIdx = (svgX: number): number => {
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const d = Math.abs(px(i) - svgX);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  };
+
+  // Tooltip box position — keep within SVG bounds
+  let tipBoxX = 0;
+  let tipBoxY = 0;
+  if (tipIdx !== null) {
+    const cx = px(tipIdx);
+    const cy = py(points[tipIdx].value);
+    tipBoxX = cx + TIP_W + TIP_GAP > w ? cx - TIP_W - TIP_GAP : cx + TIP_GAP;
+    tipBoxY = cy - TIP_H - TIP_GAP < PAD.t ? cy + TIP_GAP : cy - TIP_H - TIP_GAP;
+  }
+
+  // Web: continuous hover via onMouseMove on the wrapping View
+  const webEvents =
+    Platform.OS === 'web'
+      ? {
+          onMouseMove: (e: MouseEvent & { currentTarget: HTMLElement }) => {
+            if (w === 0) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            setTipIdx(nearestIdx(e.clientX - rect.left));
+          },
+          onMouseLeave: () => setTipIdx(null),
+        }
+      : {};
+
   return (
-    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height, marginTop: 8 }}>
+    <View
+      onLayout={ev => setW(ev.nativeEvent.layout.width)}
+      style={{ height, marginTop: 8 }}
+      {...(webEvents as object)}
+    >
       {w > 0 && (
         <Svg width={w} height={height}>
           <Defs>
@@ -152,6 +205,64 @@ export function SvgLineChart({ points, color, unit, height = 148 }: Props) {
               {points[i].label}
             </SvgText>
           ))}
+
+          {/* Native: full-area tap overlay (doesn't exist on web — handled by onMouseMove) */}
+          {Platform.OS !== 'web' && (
+            <Rect
+              x={0} y={0} width={w} height={height}
+              fill="transparent"
+              onPress={e => {
+                const x = e.nativeEvent.locationX;
+                const idx = nearestIdx(x);
+                setTipIdx(prev => prev === idx ? null : idx);
+              }}
+            />
+          )}
+
+          {/* Tooltip overlay */}
+          {tipIdx !== null && (
+            <G>
+              {/* Vertical crosshair */}
+              <SvgLine
+                x1={px(tipIdx)} y1={PAD.t}
+                x2={px(tipIdx)} y2={axisY}
+                stroke={color} strokeOpacity={0.5} strokeWidth={1}
+                strokeDasharray="3,2"
+              />
+
+              {/* Highlighted dot — larger */}
+              <Circle
+                cx={px(tipIdx)} cy={py(points[tipIdx].value)}
+                r={5} fill={color}
+              />
+
+              {/* Box */}
+              <Rect
+                x={tipBoxX} y={tipBoxY}
+                width={TIP_W} height={TIP_H}
+                rx={5} ry={5}
+                fill="#0A1628"
+                stroke={color} strokeWidth={1}
+                fillOpacity={0.95}
+              />
+
+              {/* Timestamp */}
+              <SvgText
+                x={tipBoxX + TIP_W / 2} y={tipBoxY + 15}
+                textAnchor="middle" fontSize={10} fontWeight="700" fill="#FFFFFF"
+              >
+                {points[tipIdx].label}
+              </SvgText>
+
+              {/* Value */}
+              <SvgText
+                x={tipBoxX + TIP_W / 2} y={tipBoxY + 31}
+                textAnchor="middle" fontSize={11} fontWeight="600" fill={color}
+              >
+                {fmtValue(points[tipIdx].value, unit)}
+              </SvgText>
+            </G>
+          )}
         </Svg>
       )}
     </View>
