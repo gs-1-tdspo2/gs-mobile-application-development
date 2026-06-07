@@ -1,6 +1,6 @@
 import { api } from './api';
 import { API_ENDPOINTS } from '@constants/api';
-import type { RegiaoMonitorada, CreateRegiaoRequest, UpdateRegiaoRequest } from '@/types';
+import type { RegiaoMonitorada, CreateRegiaoRequest, UpdateRegiaoRequest, RiscoAtual } from '@/types';
 
 export async function fetchRegioes(): Promise<RegiaoMonitorada[]> {
   const result = await api.get<RegiaoMonitorada[] | undefined>(API_ENDPOINTS.REGIOES);
@@ -21,4 +21,8 @@ export async function updateRegiao(id: number, data: UpdateRegiaoRequest): Promi
 
 export async function inativarRegiao(id: number): Promise<void> {
   await api.delete<void>(API_ENDPOINTS.REGIAO_BY_ID(id));
+}
+
+export async function fetchRiscoAtual(id: number): Promise<RiscoAtual> {
+  return api.get<RiscoAtual>(API_ENDPOINTS.REGIAO_RISCO_ATUAL(id));
 }

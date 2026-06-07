@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlertas } from '@hooks/useAlertas';
 import { useRegioes } from '@hooks/useRegioes';
@@ -20,80 +20,92 @@ import { usePolling } from '@hooks/usePolling';
 import { LoadingState } from '@components/ui/LoadingState';
 import { ErrorState } from '@components/ui/ErrorState';
 import { EmptyState } from '@components/ui/EmptyState';
+import { FilterSelect, FilterPanel } from '@components/filters';
 import { Colors, RiskColors, RiskBackgrounds } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
-import {
-  NivelRiscoLabels,
-  TipoAlertaLabels,
-  StatusAlertaLabels,
-} from '@constants/enums';
+import { NivelRiscoLabels, TipoAlertaLabels, StatusAlertaLabels } from '@constants/enums';
 import type { NivelRisco, TipoAlerta, StatusAlerta } from '@constants/enums';
 import type { Alerta } from '@/types';
 
 // ─── Filter types ─────────────────────────────────────────────────────────────
 
 type FilterStatus = StatusAlerta | 'TODOS';
-type FilterNivel = NivelRisco | 'TODOS';
-type FilterTipo = TipoAlerta | 'TODOS';
+type FilterNivel  = NivelRisco   | 'TODOS';
+type FilterTipo   = TipoAlerta   | 'TODOS';
 
 const STATUS_FILTERS: { value: FilterStatus; label: string }[] = [
-  { value: 'TODOS', label: 'Todos' },
-  { value: 'ABERTO', label: 'Aberto' },
+  { value: 'TODOS',      label: 'Todos' },
+  { value: 'ABERTO',     label: 'Aberto' },
   { value: 'EM_ANALISE', label: 'Em análise' },
-  { value: 'RESOLVIDO', label: 'Resolvido' },
-  { value: 'CANCELADO', label: 'Cancelado' },
+  { value: 'RESOLVIDO',  label: 'Resolvido' },
+  { value: 'CANCELADO',  label: 'Cancelado' },
 ];
 
 const NIVEL_FILTERS: { value: FilterNivel; label: string }[] = [
-  { value: 'TODOS', label: 'Todos' },
-  { value: 'CRITICO', label: 'Crítico' },
-  { value: 'ALTO', label: 'Alto' },
+  { value: 'TODOS',    label: 'Todos' },
+  { value: 'CRITICO',  label: 'Crítico' },
+  { value: 'ALTO',     label: 'Alto' },
   { value: 'MODERADO', label: 'Moderado' },
-  { value: 'BAIXO', label: 'Baixo' },
+  { value: 'BAIXO',    label: 'Baixo' },
 ];
 
 const TIPO_FILTERS: { value: FilterTipo; label: string }[] = [
-  { value: 'TODOS', label: 'Todos' },
-  { value: 'ENCHENTE', label: 'Enchente' },
+  { value: 'TODOS',        label: 'Todos' },
+  { value: 'ENCHENTE',     label: 'Enchente' },
   { value: 'DESLIZAMENTO', label: 'Deslizamento' },
-  { value: 'TEMPESTADE', label: 'Tempestade' },
+  { value: 'TEMPESTADE',   label: 'Tempestade' },
   { value: 'QUALIDADE_AR', label: 'Qualidade do ar' },
-  { value: 'OPERACIONAL', label: 'Operacional' },
+  { value: 'OPERACIONAL',  label: 'Operacional' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadgeColor(s: StatusAlerta): string {
   switch (s) {
-    case 'ABERTO':    return '#B71C1C';
+    case 'ABERTO':     return '#B71C1C';
     case 'EM_ANALISE': return '#E65100';
-    case 'RESOLVIDO': return '#1B5E20';
-    case 'CANCELADO': return '#616161';
+    case 'RESOLVIDO':  return '#1B5E20';
+    case 'CANCELADO':  return '#616161';
   }
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return '—'; }
 }
 
 // ─── Alert card ───────────────────────────────────────────────────────────────
 
-interface AlertCardProps {
-  alerta: Alerta;
-  regiaoNome: string;
+interface RegiaoInfo {
+  nome: string;
+  cidade: string;
+  estado: string;
 }
 
-function AlertCard({ alerta, regiaoNome }: AlertCardProps) {
+interface AlertCardProps {
+  alerta: Alerta;
+  regiaoInfo: RegiaoInfo | null;
+}
+
+function AlertCard({ alerta, regiaoInfo }: AlertCardProps) {
   const borderColor = RiskColors[alerta.nivelRisco] ?? Colors.border;
-  const bgColor = RiskBackgrounds[alerta.nivelRisco] ?? Colors.card;
+  const bgColor     = RiskBackgrounds[alerta.nivelRisco] ?? Colors.card;
+  const statusColor = statusBadgeColor(alerta.statusAlerta);
+
+  const regiaoLabel = regiaoInfo
+    ? `${regiaoInfo.nome} · ${regiaoInfo.cidade}/${regiaoInfo.estado}`
+    : `Região ${alerta.idRegiao}`;
 
   return (
     <View style={[card.root, { borderLeftColor: borderColor }]}>
-      {/* Badge row */}
+      {/* Badge row: nivel + tipo + status — wraps on narrow screens */}
       <View style={card.badgeRow}>
         <View style={[card.nivelBadge, { backgroundColor: bgColor, borderColor }]}>
           <Text style={[card.nivelBadgeText, { color: borderColor }]}>
@@ -105,7 +117,7 @@ function AlertCard({ alerta, regiaoNome }: AlertCardProps) {
             {TipoAlertaLabels[alerta.tipoAlerta] ?? alerta.tipoAlerta}
           </Text>
         </View>
-        <View style={[card.statusBadge, { backgroundColor: statusBadgeColor(alerta.statusAlerta) }]}>
+        <View style={[card.statusBadge, { backgroundColor: statusColor }]}>
           <Text style={card.statusBadgeText}>
             {StatusAlertaLabels[alerta.statusAlerta] ?? alerta.statusAlerta}
           </Text>
@@ -113,34 +125,36 @@ function AlertCard({ alerta, regiaoNome }: AlertCardProps) {
       </View>
 
       {/* Title */}
-      <Text style={card.title} numberOfLines={2}>{alerta.titulo}</Text>
+      <Text style={card.title} numberOfLines={2}>{alerta.titulo || '—'}</Text>
 
-      {/* Region */}
+      {/* Region: nome · cidade/UF */}
       <View style={card.regionRow}>
         <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
-        <Text style={card.regionText} numberOfLines={1}>{regiaoNome}</Text>
+        <Text style={card.regionText} numberOfLines={1}>{regiaoLabel}</Text>
       </View>
 
       {/* Description */}
-      <Text style={card.body} numberOfLines={3}>{alerta.descricao}</Text>
+      {!!alerta.descricao && (
+        <Text style={card.body} numberOfLines={3}>{alerta.descricao}</Text>
+      )}
 
       {/* Recommendation */}
       {!!alerta.recomendacao && (
         <View style={card.recBox}>
-          <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primary} />
-          <Text style={card.recText} numberOfLines={2}>{alerta.recomendacao}</Text>
+          <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primary} style={card.recIcon} />
+          <Text style={card.recText} numberOfLines={3}>{alerta.recomendacao}</Text>
         </View>
       )}
 
-      {/* Footer */}
+      {/* Footer: timestamp + resolved timestamp */}
       <View style={card.footer}>
         <View style={card.footerLeft}>
           <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-          <Text style={card.dateText}>{formatDate(alerta.dtAlerta)}</Text>
+          <Text style={card.dateText} numberOfLines={1}>{formatDate(alerta.dtAlerta)}</Text>
         </View>
         {alerta.statusAlerta === 'RESOLVIDO' && alerta.dtResolvidoEm && (
-          <Text style={card.resolvedText}>
-            Resolvido {formatDate(alerta.dtResolvidoEm)}
+          <Text style={card.resolvedText} numberOfLines={1}>
+            Res. {formatDate(alerta.dtResolvidoEm)}
           </Text>
         )}
       </View>
@@ -162,6 +176,7 @@ const card = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.xs,
     marginBottom: Spacing.sm,
+    alignItems: 'center',
   },
   nivelBadge: {
     paddingHorizontal: Spacing.sm,
@@ -189,7 +204,6 @@ const card = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: Radius.pill,
-    marginLeft: 'auto',
   },
   statusBadgeText: {
     fontSize: FontSize.xs,
@@ -202,6 +216,7 @@ const card = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
     marginBottom: Spacing.xs,
+    lineHeight: 20,
   },
   regionRow: {
     flexDirection: 'row',
@@ -229,6 +244,7 @@ const card = StyleSheet.create({
     marginBottom: Spacing.sm,
     alignItems: 'flex-start',
   },
+  recIcon: { marginTop: 1 },
   recText: {
     fontSize: FontSize.xs,
     color: Colors.primary,
@@ -240,21 +256,25 @@ const card = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: Spacing.xs,
+    gap: Spacing.sm,
   },
   footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     flex: 1,
+    minWidth: 0,
   },
   dateText: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+    flexShrink: 1,
   },
   resolvedText: {
     fontSize: FontSize.xs,
     color: '#1B5E20',
     fontWeight: '600',
+    flexShrink: 0,
   },
 });
 
@@ -264,27 +284,31 @@ interface CounterChipProps {
   value: number;
   label: string;
   accent?: string;
+  onPress?: () => void;
 }
 
-function CounterChip({ value, label, accent = Colors.primary }: CounterChipProps) {
+function CounterChip({ value, label, accent = Colors.primary, onPress }: CounterChipProps) {
   return (
-    <View style={counter.chip}>
-      <Text style={[counter.value, { color: accent }]}>{value}</Text>
-      <Text style={counter.label}>{label}</Text>
-    </View>
+    <TouchableOpacity
+      style={ctr.chip}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.75 : 1}
+    >
+      <Text style={[ctr.value, { color: accent }]}>{value}</Text>
+      <Text style={ctr.label}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
-const counter = StyleSheet.create({
+const ctr = StyleSheet.create({
   chip: {
     backgroundColor: Colors.card,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     alignItems: 'center',
-    minWidth: 72,
+    minWidth: 68,
     ...Shadow.sm,
-    marginRight: Spacing.sm,
   },
   value: {
     fontSize: FontSize.xl,
@@ -298,77 +322,6 @@ const counter = StyleSheet.create({
   },
 });
 
-// ─── Filter chip row ──────────────────────────────────────────────────────────
-
-interface FilterRowProps<T extends string> {
-  label: string;
-  options: { value: T; label: string }[];
-  selected: T;
-  onSelect: (v: T) => void;
-}
-
-function FilterRow<T extends string>({ label, options, selected, onSelect }: FilterRowProps<T>) {
-  return (
-    <View style={filter.rowWrap}>
-      <Text style={filter.rowLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={filter.row}>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[filter.chip, selected === opt.value && filter.chipActive]}
-            onPress={() => onSelect(opt.value)}
-            activeOpacity={0.75}
-          >
-            <Text style={[filter.chipText, selected === opt.value && filter.chipTextActive]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-const filter = StyleSheet.create({
-  rowWrap: {
-    marginBottom: Spacing.xs,
-  },
-  rowLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-    paddingHorizontal: Spacing.md,
-  },
-  row: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.xs,
-    paddingBottom: Spacing.xs,
-  },
-  chip: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm + 4,
-    borderRadius: Radius.pill,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  chipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: '#EEF0FB',
-  },
-  chipText: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  chipTextActive: {
-    color: Colors.primary,
-  },
-});
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function AlertasScreen() {
@@ -378,31 +331,49 @@ export default function AlertasScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('TODOS');
-  const [filterNivel, setFilterNivel] = useState<FilterNivel>('TODOS');
-  const [filterTipo, setFilterTipo] = useState<FilterTipo>('TODOS');
-  const [searchText, setSearchText] = useState('');
+  const rawParams = useLocalSearchParams<{ status?: string; tipo?: string }>();
+  const paramStatus = typeof rawParams.status === 'string' ? rawParams.status : undefined;
+  const paramTipo   = typeof rawParams.tipo   === 'string' ? rawParams.tipo   : undefined;
 
-  // Build idRegiao → nome map from regions list
-  const regiaoMap = useMemo(() => {
-    const map: Record<number, string> = {};
-    regioes.forEach(r => { map[r.idRegiao] = r.nome; });
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>(
+    paramStatus && STATUS_FILTERS.some(f => f.value === paramStatus)
+      ? (paramStatus as FilterStatus) : 'TODOS',
+  );
+  const [filterNivel,  setFilterNivel]  = useState<FilterNivel>('TODOS');
+  const [filterTipo,   setFilterTipo]   = useState<FilterTipo>(
+    paramTipo && TIPO_FILTERS.some(f => f.value === paramTipo)
+      ? (paramTipo as FilterTipo) : 'TODOS',
+  );
+  const [filterRegiao, setFilterRegiao] = useState('TODOS');
+  const [filterEstado, setFilterEstado] = useState('TODOS');
+  const [searchText,   setSearchText]   = useState('');
+
+  // idRegiao → { nome, cidade, estado }
+  const regiaoInfoMap = useMemo(() => {
+    const map: Record<number, RegiaoInfo> = {};
+    regioes.forEach(r => { map[r.idRegiao] = { nome: r.nome, cidade: r.cidade, estado: r.estado }; });
     return map;
   }, [regioes]);
 
-  const loadAll = useCallback(() => {
-    load();
-    loadRegioes();
-  }, [load, loadRegioes]);
+  const loadAll = useCallback(() => { load(); loadRegioes(); }, [load, loadRegioes]);
+  const pollAll = useCallback(() => { load({ silent: true }); loadRegioes({ silent: true }); }, [load, loadRegioes]);
 
-  // Load on focus
-  useFocusEffect(
-    useCallback(() => { loadAll(); }, [loadAll]),
-  );
+  useFocusEffect(useCallback(() => { loadAll(); }, [loadAll]));
+  usePolling(pollAll);
 
-  // Live polling every 10 s
-  usePolling(loadAll);
+  // Sync URL params when navigating from Dashboard
+  useEffect(() => {
+    if (paramStatus && STATUS_FILTERS.some(f => f.value === paramStatus)) {
+      setFilterStatus(paramStatus as FilterStatus);
+    }
+  }, [paramStatus]);
+
+  useEffect(() => {
+    if (paramTipo && TIPO_FILTERS.some(f => f.value === paramTipo)) {
+      setFilterTipo(paramTipo as FilterTipo);
+    }
+  }, [paramTipo]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -410,7 +381,37 @@ export default function AlertasScreen() {
     setRefreshing(false);
   }, [load, loadRegioes]);
 
-  // Summary counters
+  // Region filter options — only regions that appear in the alert list
+  const regiaoFilterOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const seen = new Map<number, string>();
+    rawAlertas.forEach(a => {
+      if (!seen.has(a.idRegiao)) {
+        const info = regiaoInfoMap[a.idRegiao];
+        seen.set(a.idRegiao, info ? `${info.nome} (${info.estado})` : `Região ${a.idRegiao}`);
+      }
+    });
+    if (seen.size <= 1) return [];
+    return [
+      { value: 'TODOS', label: 'Todas' },
+      ...Array.from(seen.entries()).map(([id, lbl]) => ({ value: String(id), label: lbl })),
+    ];
+  }, [rawAlertas, regiaoInfoMap]);
+
+  // Estado filter options — only UFs present in the alert list
+  const estadoFilterOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const states = new Set<string>();
+    rawAlertas.forEach(a => {
+      const info = regiaoInfoMap[a.idRegiao];
+      if (info?.estado) states.add(info.estado);
+    });
+    if (states.size <= 1) return [];
+    return [
+      { value: 'TODOS', label: 'Todos' },
+      ...Array.from(states).sort().map(uf => ({ value: uf, label: uf })),
+    ];
+  }, [rawAlertas, regiaoInfoMap]);
+
+  // Summary counters — always unfiltered totals
   const counters = useMemo(() => ({
     total:      rawAlertas.length,
     abertos:    rawAlertas.filter(a => a.statusAlerta === 'ABERTO').length,
@@ -420,52 +421,103 @@ export default function AlertasScreen() {
     altos:      rawAlertas.filter(a => a.nivelRisco === 'ALTO').length,
   }), [rawAlertas]);
 
-  // Apply filters + text search
+  // Filtered alert list
   const filtered = useMemo(() =>
     rawAlertas.filter(a => {
       if (filterStatus !== 'TODOS' && a.statusAlerta !== filterStatus) return false;
-      if (filterNivel !== 'TODOS' && a.nivelRisco !== filterNivel) return false;
-      if (filterTipo !== 'TODOS' && a.tipoAlerta !== filterTipo) return false;
+      if (filterNivel  !== 'TODOS' && a.nivelRisco   !== filterNivel)  return false;
+      if (filterTipo   !== 'TODOS' && a.tipoAlerta   !== filterTipo)   return false;
+      if (filterRegiao !== 'TODOS' && String(a.idRegiao) !== filterRegiao) return false;
+      if (filterEstado !== 'TODOS') {
+        const info = regiaoInfoMap[a.idRegiao];
+        if (!info || info.estado !== filterEstado) return false;
+      }
       if (searchText.trim()) {
         const q = searchText.toLowerCase();
-        const match =
-          a.titulo.toLowerCase().includes(q) ||
-          a.descricao.toLowerCase().includes(q) ||
+        const hit =
+          (a.titulo?.toLowerCase().includes(q) ?? false) ||
+          (a.descricao?.toLowerCase().includes(q) ?? false) ||
           (a.recomendacao?.toLowerCase().includes(q) ?? false);
-        if (!match) return false;
+        if (!hit) return false;
       }
       return true;
     }),
-    [rawAlertas, filterStatus, filterNivel, filterTipo, searchText],
+    [rawAlertas, filterStatus, filterNivel, filterTipo, filterRegiao, filterEstado, searchText, regiaoInfoMap],
   );
+
+  const hasFilters = !!(
+    searchText.trim() ||
+    filterStatus !== 'TODOS' || filterNivel !== 'TODOS' ||
+    filterTipo   !== 'TODOS' || filterRegiao !== 'TODOS' || filterEstado !== 'TODOS'
+  );
+
+  const clearFilters = useCallback(() => {
+    setSearchText('');
+    setFilterStatus('TODOS');
+    setFilterNivel('TODOS');
+    setFilterTipo('TODOS');
+    setFilterRegiao('TODOS');
+    setFilterEstado('TODOS');
+  }, []);
 
   const screenTitle = isGoverno ? 'Console de Alertas' : 'Alertas em Acompanhamento';
 
-  // List header: counters + search + filters
+  // ── List header ──────────────────────────────────────────────────────────────
+
   const ListHeader = (
     <View>
-      {/* Summary counters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.countersRow, isDesktop && styles.countersRowDesktop]}
-      >
-        <CounterChip value={counters.total}     label="Total"      accent={Colors.primary} />
-        <CounterChip value={counters.abertos}   label="Abertos"    accent={RiskColors.ALTO} />
-        <CounterChip value={counters.emAnalise} label="Em análise" accent="#E65100" />
-        <CounterChip value={counters.resolvidos} label="Resolvidos" accent="#1B5E20" />
-        <CounterChip value={counters.criticos}  label="Críticos"   accent={RiskColors.CRITICO} />
-        <CounterChip value={counters.altos}     label="Altos"      accent={RiskColors.ALTO} />
-      </ScrollView>
+      {/* Title — desktop only (mobile uses navigator header) */}
+      {isDesktop && (
+        <View style={styles.desktopTitleWrap}>
+          <Text style={styles.desktopTitle}>{screenTitle}</Text>
+        </View>
+      )}
+
+      {/* Summary counters — always total geral; tappable to quick-filter */}
+      <View style={styles.countersSection}>
+        {hasFilters && (
+          <Text style={styles.countersSectionLabel}>Total geral</Text>
+        )}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.countersRow}
+        >
+          <CounterChip
+            value={counters.total}     label="Total"
+            accent={Colors.primary}   onPress={clearFilters}
+          />
+          <CounterChip
+            value={counters.abertos}   label="Abertos"
+            accent={RiskColors.ALTO}   onPress={() => { clearFilters(); setFilterStatus('ABERTO'); }}
+          />
+          <CounterChip
+            value={counters.emAnalise} label="Em análise"
+            accent="#E65100"           onPress={() => { clearFilters(); setFilterStatus('EM_ANALISE'); }}
+          />
+          <CounterChip
+            value={counters.resolvidos} label="Resolvidos"
+            accent="#1B5E20"            onPress={() => { clearFilters(); setFilterStatus('RESOLVIDO'); }}
+          />
+          <CounterChip
+            value={counters.criticos}  label="Críticos"
+            accent={RiskColors.CRITICO} onPress={() => { clearFilters(); setFilterNivel('CRITICO'); }}
+          />
+          <CounterChip
+            value={counters.altos}     label="Altos"
+            accent={RiskColors.ALTO}   onPress={() => { clearFilters(); setFilterNivel('ALTO'); }}
+          />
+        </ScrollView>
+      </View>
 
       {/* Search box */}
       <View style={[styles.searchWrap, isDesktop && styles.searchWrapDesktop]}>
-        <Ionicons name="search-outline" size={16} color={Colors.textMuted} style={styles.searchIcon} />
+        <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
         <TextInput
           style={styles.searchInput}
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Buscar por título, descrição…"
+          placeholder="Buscar por título, descrição ou recomendação…"
           placeholderTextColor={Colors.textMuted}
           returnKeyType="search"
           clearButtonMode="while-editing"
@@ -480,19 +532,56 @@ export default function AlertasScreen() {
         )}
       </View>
 
-      {/* Filters */}
-      <View style={styles.filtersSection}>
-        <FilterRow label="Status" options={STATUS_FILTERS} selected={filterStatus} onSelect={setFilterStatus} />
-        <FilterRow label="Nível"  options={NIVEL_FILTERS}  selected={filterNivel}  onSelect={setFilterNivel} />
-        <FilterRow label="Tipo"   options={TIPO_FILTERS}   selected={filterTipo}   onSelect={setFilterTipo} />
-      </View>
+      {/* Dropdown filters */}
+      <FilterPanel style={styles.filterPanel}>
+        <FilterSelect
+          label="Status"
+          options={STATUS_FILTERS}
+          selected={filterStatus}
+          onSelect={setFilterStatus}
+        />
+        <FilterSelect
+          label="Nível"
+          options={NIVEL_FILTERS}
+          selected={filterNivel}
+          onSelect={setFilterNivel}
+        />
+        <FilterSelect
+          label="Tipo"
+          options={TIPO_FILTERS}
+          selected={filterTipo}
+          onSelect={setFilterTipo}
+        />
+        {regiaoFilterOptions.length > 0 && (
+          <FilterSelect
+            label="Região"
+            options={regiaoFilterOptions}
+            selected={filterRegiao}
+            onSelect={setFilterRegiao}
+          />
+        )}
+        {estadoFilterOptions.length > 0 && (
+          <FilterSelect
+            label="Estado"
+            options={estadoFilterOptions}
+            selected={filterEstado}
+            onSelect={setFilterEstado}
+          />
+        )}
+      </FilterPanel>
+      {hasFilters && (
+        <TouchableOpacity onPress={clearFilters} style={styles.clearBtn} activeOpacity={0.75}>
+          <Ionicons name="close-circle-outline" size={14} color={Colors.primary} />
+          <Text style={styles.clearBtnText}>Limpar filtros</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Result count */}
       {status === 'success' && (
         <Text style={[styles.resultCount, isDesktop && styles.resultCountDesktop]}>
-          {filtered.length === rawAlertas.length
-            ? `${filtered.length} alerta${filtered.length !== 1 ? 's' : ''}`
-            : `${filtered.length} de ${rawAlertas.length} alertas`}
+          {hasFilters
+            ? `${filtered.length} de ${rawAlertas.length} ${rawAlertas.length === 1 ? 'alerta' : 'alertas'}`
+            : `${rawAlertas.length} ${rawAlertas.length === 1 ? 'alerta' : 'alertas'}`}
         </Text>
       )}
     </View>
@@ -503,13 +592,6 @@ export default function AlertasScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Inline title on desktop */}
-      {isDesktop && (
-        <View style={styles.desktopHeader}>
-          <Text style={styles.desktopTitle}>{screenTitle}</Text>
-        </View>
-      )}
-
       {isLoading && <LoadingState message="Carregando alertas…" />}
       {isError   && <ErrorState  message={errorMessage ?? 'Erro ao carregar alertas.'} onRetry={load} />}
 
@@ -520,13 +602,19 @@ export default function AlertasScreen() {
           renderItem={({ item }) => (
             <AlertCard
               alerta={item}
-              regiaoNome={regiaoMap[item.idRegiao] ?? `Região ${item.idRegiao}`}
+              regiaoInfo={regiaoInfoMap[item.idRegiao] ?? null}
             />
           )}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             status === 'success' ? (
-              <EmptyState message="Nenhum alerta encontrado para os filtros selecionados." />
+              <EmptyState
+                message={
+                  hasFilters
+                    ? 'Nenhum alerta encontrado para os filtros selecionados.'
+                    : 'Nenhum alerta registrado.'
+                }
+              />
             ) : null
           }
           contentContainerStyle={[
@@ -554,13 +642,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  desktopHeader: {
+  desktopTitleWrap: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
   },
   desktopTitle: {
     fontSize: FontSize.xxl,
@@ -569,14 +654,26 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
+  // Counters
+  countersSection: {
+    paddingTop: Spacing.sm,
+  },
+  countersSectionLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: Spacing.md,
+    marginBottom: 4,
+  },
   countersRow: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  countersRowDesktop: {
-    paddingHorizontal: 0,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
   },
 
+  // Search
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -590,10 +687,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 4,
     gap: Spacing.xs,
   },
-  searchWrapDesktop: {
-    marginHorizontal: 0,
-  },
-  searchIcon: {},
+  searchWrapDesktop: { marginHorizontal: 0 },
   searchInput: {
     flex: 1,
     fontSize: FontSize.sm,
@@ -601,16 +695,24 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
 
-  filtersSection: {
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-    marginBottom: Spacing.sm,
+  // Filters block
+  filterPanel: {
+    marginBottom: Spacing.xs,
+  },
+  clearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
+  clearBtnText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 
+  // Result count
   resultCount: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
@@ -618,18 +720,14 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xs,
     fontWeight: '500',
   },
-  resultCountDesktop: {
-    paddingHorizontal: 0,
-  },
+  resultCountDesktop: { paddingHorizontal: 0 },
 
+  // List
   listContent: {
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.xxl,
   },
   listContentDesktop: {
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
     paddingHorizontal: Spacing.xl,
   },
   listContentEmpty: {

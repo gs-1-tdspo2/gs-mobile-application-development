@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { RankingEntry } from '@utils/chartTransforms';
 import { Colors, RiskColors, RiskBackgrounds } from '@constants/colors';
 import { CategoriaRiscoLabels, NivelRiscoLabels } from '@constants/enums';
@@ -6,9 +6,10 @@ import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
 
 interface Props {
   data: RankingEntry[];
+  onPress?: (idRegiao: number) => void;
 }
 
-export function RegionalRankingBar({ data }: Props) {
+export function RegionalRankingBar({ data, onPress }: Props) {
   if (data.length === 0) return null;
 
   const maxScore = Math.max(...data.map(d => d.scoreMedio), 100);
@@ -21,7 +22,12 @@ export function RegionalRankingBar({ data }: Props) {
         const bg = RiskBackgrounds[entry.nivelRiscoMedio];
 
         return (
-          <View key={entry.idIndicador} style={styles.row}>
+          <TouchableOpacity
+            key={entry.idIndicador}
+            style={styles.row}
+            onPress={onPress ? () => onPress(entry.idRegiao) : undefined}
+            activeOpacity={onPress ? 0.75 : 1}
+          >
             {/* Rank badge */}
             <View style={[styles.rankBadge, idx < 3 ? { backgroundColor: fg } : styles.rankBadgeNeutral]}>
               <Text style={[styles.rankNum, idx < 3 ? styles.rankNumTop : null]}>
@@ -70,7 +76,7 @@ export function RegionalRankingBar({ data }: Props) {
               <Text style={[styles.scoreNum, { color: fg }]}>{entry.scoreMedio}</Text>
               <Text style={[styles.scorePts, { color: fg }]}>pts</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>

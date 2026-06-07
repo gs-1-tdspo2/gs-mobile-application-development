@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -26,14 +25,14 @@ import { LoadingState } from '@components/ui/LoadingState';
 import { ErrorState } from '@components/ui/ErrorState';
 import { EmptyState } from '@components/ui/EmptyState';
 import { EstacaoCard, EstacaoForm } from '@components/estacoes';
+import { FilterSelect, FilterPanel } from '@components/filters';
+import { SensorReadingSection } from '@components/charts';
 import { Colors, RiskColors } from '@constants/colors';
 import { FontSize, Spacing, Radius, Shadow } from '@constants/design';
-import {
-  StatusEstacaoLabels,
-  TipoEstacaoLabels,
-} from '@constants/enums';
+import { StatusEstacaoLabels, TipoEstacaoLabels } from '@constants/enums';
 import type { StatusEstacao, TipoEstacao } from '@constants/enums';
-import type { EstacaoIot, LeituraIot, RegiaoMonitorada } from '@/types';
+import type { EstacaoIot, RegiaoMonitorada } from '@/types';
+import { extractSensorAnalysis } from '@utils/sensorTransforms';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,138 +55,6 @@ const TIPO_FILTERS: { value: FilterTipo; label: string }[] = [
   { value: 'REFERENCIA', label: 'Referência' },
 ];
 
-// ─── Region chip row ──────────────────────────────────────────────────────────
-
-interface RegionChipsProps {
-  regioes: RegiaoMonitorada[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
-}
-
-function RegionChips({ regioes, selectedId, onSelect }: RegionChipsProps) {
-  const active = regioes.filter(r => r.stAtivo !== 'N');
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={chips.row}
-    >
-      {active.map(r => {
-        const sel = selectedId === r.idRegiao;
-        return (
-          <TouchableOpacity
-            key={r.idRegiao}
-            style={[chips.chip, sel && chips.chipActive]}
-            onPress={() => onSelect(r.idRegiao)}
-            activeOpacity={0.75}
-          >
-            <Text style={[chips.text, sel && chips.textActive]} numberOfLines={1}>
-              {r.nome} · {r.estado}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-const chips = StyleSheet.create({
-  row: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.xs,
-    paddingVertical: Spacing.xs,
-  },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm - 2,
-    borderRadius: Radius.pill,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  chipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary,
-  },
-  text: {
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-    color: Colors.text,
-  },
-  textActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-});
-
-// ─── Filter chip row ──────────────────────────────────────────────────────────
-
-interface FilterChipsProps<T extends string> {
-  label: string;
-  options: { value: T; label: string }[];
-  selected: T;
-  onSelect: (v: T) => void;
-}
-
-function FilterChips<T extends string>({ label, options, selected, onSelect }: FilterChipsProps<T>) {
-  return (
-    <View style={fchip.wrap}>
-      <Text style={fchip.label}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={fchip.row}>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[fchip.chip, selected === opt.value && fchip.chipActive]}
-            onPress={() => onSelect(opt.value)}
-            activeOpacity={0.75}
-          >
-            <Text style={[fchip.text, selected === opt.value && fchip.textActive]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-const fchip = StyleSheet.create({
-  wrap: { marginBottom: Spacing.xs },
-  label: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-    paddingHorizontal: Spacing.md,
-  },
-  row: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.xs,
-    paddingBottom: Spacing.xs,
-  },
-  chip: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm + 4,
-    borderRadius: Radius.pill,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  chipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: '#EEF0FB',
-  },
-  text: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  textActive: {
-    color: Colors.primary,
-  },
-});
 
 // ─── Station detail modal ─────────────────────────────────────────────────────
 
@@ -202,56 +69,29 @@ function formatDateShort(iso?: string | null): string {
 }
 
 const STATUS_COLORS: Record<StatusEstacao, string> = {
-  ATIVA: '#2E7D32',
-  INATIVA: '#757575',
+  ATIVA:      '#2E7D32',
+  INATIVA:    '#757575',
   MANUTENCAO: '#EF6C00',
-  FALHA: '#D32F2F',
-  SEM_COM: '#F9A825',
+  FALHA:      '#D32F2F',
+  SEM_COM:    '#F9A825',
 };
-
-interface SensorRowProps {
-  label: string;
-  value: number | null | undefined;
-  unit: string;
-  icon: string;
-}
-
-function SensorRow({ label, value, unit, icon }: SensorRowProps) {
-  const available = value != null && !isNaN(Number(value));
-  return (
-    <View style={det.sensorRow}>
-      <View style={det.sensorLeft}>
-        <Ionicons name={icon as ComponentProps<typeof Ionicons>['name']} size={15} color={Colors.primary} />
-        <Text style={det.sensorLabel}>{label}</Text>
-      </View>
-      {available ? (
-        <Text style={det.sensorValue}>
-          {Number(value).toFixed(1)}<Text style={det.sensorUnit}>{unit ? ` ${unit}` : ''}</Text>
-        </Text>
-      ) : (
-        <Text style={det.sensorNA}>Dado não disponível</Text>
-      )}
-    </View>
-  );
-}
 
 interface StationDetailModalProps {
   visible: boolean;
   estacao: EstacaoIot | null;
   regiaoId: number | null;
+  regiaoNome?: string;
   onClose: () => void;
 }
 
-function StationDetailModal({ visible, estacao, regiaoId, onClose }: StationDetailModalProps) {
+function StationDetailModal({ visible, estacao, regiaoId, regiaoNome, onClose }: StationDetailModalProps) {
   const { data: leituras, status: leitStatus, load } = useLeituras(regiaoId);
 
-  // Load on open
   useEffect(() => {
     if (visible && regiaoId !== null) void load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, regiaoId]);
 
-  // Poll every 10 s while open
   useEffect(() => {
     if (!visible || regiaoId === null) return;
     const id = setInterval(() => void load(), 10_000);
@@ -259,35 +99,55 @@ function StationDetailModal({ visible, estacao, regiaoId, onClose }: StationDeta
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, regiaoId]);
 
-  // Latest reading for this station
-  const latest = useMemo<LeituraIot | null>(() => {
-    if (!estacao || leituras.length === 0) return null;
+  // Filter by station if idEstacao is present in readings; fall back to all region readings
+  const stationPool = useMemo(() => {
+    if (!estacao || leituras.length === 0) return [];
     const forStation = leituras.filter(l => l.idEstacao === estacao.idEstacao);
-    const pool = forStation.length > 0 ? forStation : leituras;
-    return pool.slice().sort(
-      (a, b) => new Date(b.dtLeit).getTime() - new Date(a.dtLeit).getTime()
-    )[0] ?? null;
+    return forStation.length > 0 ? forStation : leituras;
   }, [leituras, estacao]);
 
+  const isRegionFallback = useMemo(() => {
+    if (!estacao || leituras.length === 0) return false;
+    const forStation = leituras.filter(l => l.idEstacao === estacao.idEstacao);
+    return forStation.length === 0 && leituras.length > 0;
+  }, [leituras, estacao]);
+
+  const analysis = useMemo(() => extractSensorAnalysis(stationPool), [stationPool]);
+
   if (!estacao) return null;
+
   const statusColor = STATUS_COLORS[estacao.statusEstacao] ?? Colors.textMuted;
+  const hasData = stationPool.length > 0;
+  const isLoading = (leitStatus === 'loading' || leitStatus === 'idle') && !hasData;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={det.overlay}>
         <View style={det.sheet}>
+          {/* Drag handle */}
+          <View style={det.handle} />
+
           {/* Header */}
           <View style={det.header}>
             <View style={det.headerLeft}>
               <Text style={det.stationName} numberOfLines={2}>{estacao.nome}</Text>
-              <Text style={det.stationCode}>{estacao.codigoEstacao}</Text>
+              <View style={det.codeRow}>
+                <Text style={det.stationCode}>{estacao.codigoEstacao}</Text>
+                {regiaoNome ? (
+                  <Text style={det.regiaoLabel}> · {regiaoNome}</Text>
+                ) : null}
+              </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={det.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={det.closeBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons name="close" size={22} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Status + type badges */}
+          {/* Status + type + live badges */}
           <View style={det.badgeRow}>
             <View style={[det.statusBadge, { backgroundColor: statusColor + '22' }]}>
               <Text style={[det.statusBadgeText, { color: statusColor }]}>
@@ -305,66 +165,95 @@ function StationDetailModal({ visible, estacao, regiaoId, onClose }: StationDeta
             </View>
           </View>
 
-          {/* Last communication */}
+          {/* Last communication + optional coordinates */}
           <Text style={det.lastComm}>
             Última comunicação: {formatDateShort(estacao.dtUltimaComunicacao)}
           </Text>
+          {estacao.latitude != null && estacao.longitude != null && (
+            <Text style={det.coords}>
+              {Number(estacao.latitude).toFixed(5)}, {Number(estacao.longitude).toFixed(5)}
+            </Text>
+          )}
 
           <ScrollView style={det.scroll} showsVerticalScrollIndicator={false}>
-            {/* Readings section */}
-            <View style={det.section}>
-              <Text style={det.sectionTitle}>Telemetria — última leitura</Text>
-
-              {leitStatus === 'loading' && leituras.length === 0 && (
-                <View style={det.loadingRow}>
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={det.loadingText}>Carregando leituras…</Text>
-                </View>
-              )}
-
-              {leitStatus === 'error' && (
-                <Text style={det.errorText}>Erro ao carregar leituras.</Text>
-              )}
-
-              {leitStatus === 'success' && latest === null && (
-                <Text style={det.emptyText}>
-                  Nenhuma leitura encontrada para esta estação.
-                </Text>
-              )}
-
-              {latest && (
-                <>
-                  <Text style={det.readingDate}>
-                    Coletado em {formatDateShort(latest.dtLeit)}
-                  </Text>
-                  <SensorRow label="Nível d'água"        value={latest.nivelAguaPct}       unit="%"      icon="water-outline" />
-                  <SensorRow label="Distância ao nível"  value={latest.distanciaAguaCm}     unit="cm"     icon="resize-outline" />
-                  <SensorRow label="Inclinação"          value={latest.inclinacaoGraus}     unit="°"      icon="trending-up-outline" />
-                  <SensorRow label="Vibração"            value={latest.vibracao}            unit=""       icon="pulse-outline" />
-                  <SensorRow label="Pressão atmosférica" value={latest.pressaoHpa}          unit="hPa"    icon="speedometer-outline" />
-                  <SensorRow label="PM2.5"               value={latest.pm25}                unit="μg/m³"  icon="cloud-outline" />
-                  <SensorRow label="PM10"                value={latest.pm10}                unit="μg/m³"  icon="cloudy-outline" />
-                </>
-              )}
-
-              {leitStatus === 'idle' && (
-                <Text style={det.emptyText}>
-                  Observações climáticas externas ainda não estão disponíveis pela API.
-                </Text>
-              )}
-            </View>
-
-            {/* Coordinates */}
-            {estacao.latitude != null && estacao.longitude != null && (
-              <View style={det.section}>
-                <Text style={det.sectionTitle}>Localização</Text>
-                <Text style={det.coords}>
-                  {Number(estacao.latitude).toFixed(5)}, {Number(estacao.longitude).toFixed(5)}
-                </Text>
+            {/* Loading */}
+            {isLoading && (
+              <View style={det.loadingRow}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={det.loadingText}>Carregando leituras…</Text>
               </View>
             )}
 
-            <View style={{ height: Spacing.xl }} />
+            {/* Error */}
+            {leitStatus === 'error' && (
+              <Text style={det.errorText}>Erro ao carregar leituras.</Text>
+            )}
+
+            {/* No data */}
+            {!isLoading && leitStatus !== 'error' && !hasData && (
+              <Text style={det.emptyText}>
+                Nenhuma leitura encontrada para esta estação.
+              </Text>
+            )}
+
+            {/* Telemetry data */}
+            {hasData && (
+              <View>
+                {/* Region fallback disclosure */}
+                {isRegionFallback && (
+                  <View style={det.disclosureBox}>
+                    <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+                    <Text style={det.disclosureText}>
+                      A API retorna leituras por região. Não foi possível isolar esta estação individualmente.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Reading range */}
+                {analysis.rangeLabel && (
+                  <Text style={det.rangeText}>
+                    {analysis.totalLeituras} {analysis.totalLeituras === 1 ? 'leitura' : 'leituras'} · {analysis.rangeLabel}
+                  </Text>
+                )}
+
+                {/* Sensor sections */}
+                <SensorReadingSection
+                  title="Nível de água"
+                  componente="HC-SR04"
+                  color="#1565C0"
+                  seriesMap={{
+                    distancia: analysis.agua.distancia,
+                    nivel: analysis.agua.nivel,
+                  }}
+                />
+                <SensorReadingSection
+                  title="Qualidade do ar"
+                  componente="Potenciômetro (sim. PMS5003)"
+                  color="#6A1B9A"
+                  seriesMap={{
+                    pm25: analysis.particulado.pm25,
+                    pm10: analysis.particulado.pm10,
+                  }}
+                />
+                <SensorReadingSection
+                  title="Pressão atmosférica"
+                  componente="BMP180"
+                  color="#00695C"
+                  seriesMap={{ pressao: analysis.pressao }}
+                />
+                <SensorReadingSection
+                  title="Inclinação e vibração"
+                  componente="MPU6050"
+                  color="#BF360C"
+                  seriesMap={{
+                    inclinacao: analysis.movimento.inclinacao,
+                    vibracao: analysis.movimento.vibracao,
+                  }}
+                />
+              </View>
+            )}
+
+            <View style={{ height: Spacing.xxl }} />
           </ScrollView>
         </View>
       </View>
@@ -382,9 +271,18 @@ const det = StyleSheet.create({
     backgroundColor: Colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
+    maxHeight: '88%',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: 0,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginBottom: Spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -398,15 +296,22 @@ const det = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
   stationCode: {
     fontSize: FontSize.sm,
     color: Colors.primary,
     fontWeight: '600',
-    marginTop: 2,
   },
-  closeBtn: {
-    padding: 4,
+  regiaoLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
+  closeBtn: { padding: 4 },
   badgeRow: {
     flexDirection: 'row',
     gap: Spacing.xs,
@@ -443,88 +348,50 @@ const det = StyleSheet.create({
     borderRadius: Radius.pill,
     marginLeft: 'auto',
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#2E7D32',
-  },
-  liveText: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: '#1B5E20',
-  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2E7D32' },
+  liveText: { fontSize: FontSize.xs, fontWeight: '700', color: '#1B5E20' },
   lastComm: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+    marginBottom: 2,
+  },
+  coords: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
     marginBottom: Spacing.sm,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
   },
   scroll: { flex: 1 },
-  section: {
-    backgroundColor: Colors.background,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  sectionTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: Spacing.sm,
-  },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.lg,
   },
   loadingText: { fontSize: FontSize.sm, color: Colors.textMuted },
-  errorText:   { fontSize: FontSize.sm, color: RiskColors.ALTO, fontStyle: 'italic' },
-  emptyText:   { fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic', lineHeight: 18 },
-  readingDate: {
+  errorText:   { fontSize: FontSize.sm, color: RiskColors.ALTO, fontStyle: 'italic', paddingVertical: Spacing.md },
+  emptyText:   { fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic', paddingVertical: Spacing.md, lineHeight: 18 },
+  disclosureBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  disclosureText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    flex: 1,
+    lineHeight: 16,
+  },
+  rangeText: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
     marginBottom: Spacing.sm,
-  },
-  sensorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  sensorLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  sensorLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.text,
-  },
-  sensorValue: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  sensorUnit: {
-    fontSize: FontSize.xs,
-    fontWeight: '400',
-    color: Colors.textMuted,
-  },
-  sensorNA: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-  coords: {
-    fontSize: FontSize.sm,
-    color: Colors.text,
-    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+    marginTop: 2,
   },
 });
 
@@ -542,7 +409,6 @@ export default function EstacoesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedEstacao, setSelectedEstacao] = useState<EstacaoIot | null>(null);
 
-  // Search / filter state
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('TODOS');
   const [filterTipo, setFilterTipo] = useState<FilterTipo>('TODOS');
@@ -550,7 +416,6 @@ export default function EstacoesScreen() {
   const { data: estacoes, status: estStatus, errorMessage: estError, load: loadEstacoes } =
     useEstacoes(selectedRegiaoId);
 
-  // Refresh regions on focus; refresh stations when region is selected
   useFocusEffect(
     useCallback(() => { loadRegioes(); }, [loadRegioes]),
   );
@@ -561,9 +426,8 @@ export default function EstacoesScreen() {
     }, [selectedRegiaoId, loadEstacoes]),
   );
 
-  // Poll station list every 10 s
   const pollEstacoes = useCallback(() => {
-    if (selectedRegiaoId !== null) loadEstacoes();
+    if (selectedRegiaoId !== null) loadEstacoes({ silent: true });
   }, [selectedRegiaoId, loadEstacoes]);
   usePolling(pollEstacoes);
 
@@ -581,6 +445,21 @@ export default function EstacoesScreen() {
     setFilterTipo('TODOS');
   }, []);
 
+  const regiaoOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const active = regioes.filter(r => r.stAtivo !== 'N');
+    return [
+      { value: 'NONE', label: 'Selecionar…' },
+      ...active.map(r => ({ value: String(r.idRegiao), label: `${r.nome} (${r.estado})` })),
+    ];
+  }, [regioes]);
+
+  const selectedRegiaoValue = selectedRegiaoId === null ? 'NONE' : String(selectedRegiaoId);
+
+  const handleRegiaoSelect = useCallback((v: string) => {
+    if (v === 'NONE') return;
+    handleSelectRegiao(Number(v));
+  }, [handleSelectRegiao]);
+
   const handleFormSuccess = useCallback(() => {
     setFormVisible(false);
     showToast('Estação cadastrada com sucesso.', 'success');
@@ -592,34 +471,39 @@ export default function EstacoesScreen() {
     [regioes, selectedRegiaoId],
   );
 
-  // Filtered + searched station list
   const filteredEstacoes = useMemo(() => {
     return estacoes.filter(e => {
       if (filterStatus !== 'TODOS' && e.statusEstacao !== filterStatus) return false;
       if (filterTipo !== 'TODOS' && e.tipoEstacao !== filterTipo) return false;
       if (searchText.trim()) {
         const q = searchText.toLowerCase();
-        if (
-          !e.nome.toLowerCase().includes(q) &&
-          !e.codigoEstacao.toLowerCase().includes(q)
-        ) return false;
+        if (!e.nome.toLowerCase().includes(q) && !e.codigoEstacao.toLowerCase().includes(q)) return false;
       }
       return true;
     });
   }, [estacoes, filterStatus, filterTipo, searchText]);
+
+  const hasFilters = !!(searchText.trim() || filterStatus !== 'TODOS' || filterTipo !== 'TODOS');
+
+  const clearFilters = useCallback(() => {
+    setSearchText('');
+    setFilterStatus('TODOS');
+    setFilterTipo('TODOS');
+  }, []);
+
+  // Show filters as soon as a region is selected and we have a completed load
+  const showFilters = selectedRegiaoId !== null && estStatus === 'success';
 
   const screenTitle = isGoverno ? 'Estações IoT' : 'Estações de Monitoramento';
   const screenSubtitle = isGoverno
     ? 'Cadastro e acompanhamento das estações vinculadas às regiões monitoradas.'
     : 'Visualização das estações usadas no acompanhamento territorial.';
 
-  const showFilters = selectedRegiaoId !== null && estStatus === 'success' && estacoes.length > 0;
-
-  // ── List header ────────────────────────────────────────────────────────────
+  // ── List header ──────────────────────────────────────────────────────────────
 
   const ListHeader = (
     <View>
-      {/* Role-based header */}
+      {/* Role header */}
       <View style={[styles.headerSection, isDesktop && styles.headerSectionDesktop]}>
         <Text style={styles.screenTitle}>{screenTitle}</Text>
         <Text style={styles.screenSubtitle}>{screenSubtitle}</Text>
@@ -627,13 +511,21 @@ export default function EstacoesScreen() {
 
       {/* Region selector */}
       <View style={styles.selectorSection}>
-        <Text style={styles.selectorLabel}>Selecione uma região</Text>
         {regStatus === 'loading' && regioes.length === 0 ? (
           <View style={styles.regLoadingRow}>
+            <ActivityIndicator size="small" color={Colors.primary} />
             <Text style={styles.regLoadingText}>Carregando regiões…</Text>
           </View>
         ) : (
-          <RegionChips regioes={regioes} selectedId={selectedRegiaoId} onSelect={handleSelectRegiao} />
+          <View style={[styles.regiaoSelectWrap, isDesktop && styles.regiaoSelectWrapDesktop]}>
+            <FilterSelect
+              label="Região"
+              options={regiaoOptions}
+              selected={selectedRegiaoValue}
+              onSelect={handleRegiaoSelect}
+              disabled={regioes.length === 0}
+            />
+          </View>
         )}
       </View>
 
@@ -647,10 +539,10 @@ export default function EstacoesScreen() {
         </View>
       )}
 
-      {/* Search + filters — only when station list loaded */}
+      {/* Filters block */}
       {showFilters && (
         <View style={styles.filterBlock}>
-          {/* Search box */}
+          {/* Search */}
           <View style={[styles.searchWrap, isDesktop && styles.searchWrapDesktop]}>
             <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
             <TextInput
@@ -663,23 +555,42 @@ export default function EstacoesScreen() {
               clearButtonMode="while-editing"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>
-          {/* Status filter */}
-          <FilterChips label="Status" options={STATUS_FILTERS} selected={filterStatus} onSelect={setFilterStatus} />
-          {/* Type filter */}
-          <FilterChips label="Tipo" options={TIPO_FILTERS} selected={filterTipo} onSelect={setFilterTipo} />
+          <FilterPanel>
+            <FilterSelect
+              label="Status"
+              options={STATUS_FILTERS}
+              selected={filterStatus}
+              onSelect={setFilterStatus}
+            />
+            <FilterSelect
+              label="Tipo"
+              options={TIPO_FILTERS}
+              selected={filterTipo}
+              onSelect={setFilterTipo}
+            />
+          </FilterPanel>
+          {hasFilters && (
+            <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersBtn} activeOpacity={0.75}>
+              <Ionicons name="close-circle-outline" size={14} color={Colors.primary} />
+              <Text style={styles.clearFiltersBtnText}>Limpar filtros</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {/* Station count header */}
+      {/* Stations count + add button */}
       {selectedRegiaoId !== null && estStatus === 'success' && (
         <View style={[styles.stationsHeader, isDesktop && styles.stationsHeaderDesktop]}>
           <Text style={styles.stationsCount}>
-            {filteredEstacoes.length !== estacoes.length
+            {hasFilters
               ? `${filteredEstacoes.length} de ${estacoes.length} ${estacoes.length === 1 ? 'estação' : 'estações'}`
               : `${estacoes.length} ${estacoes.length === 1 ? 'estação' : 'estações'}`}
             {selectedRegiao ? ` · ${selectedRegiao.nome}` : ''}
@@ -697,7 +608,7 @@ export default function EstacoesScreen() {
         </View>
       )}
 
-      {/* Station loading/error states */}
+      {/* Station loading/error */}
       {selectedRegiaoId !== null && estStatus === 'loading' && (
         <LoadingState message="Carregando estações…" />
       )}
@@ -707,7 +618,8 @@ export default function EstacoesScreen() {
     </View>
   );
 
-  const showStationList = selectedRegiaoId !== null && (estStatus === 'success' || (estStatus !== 'error' && estacoes.length > 0));
+  const showStationList = selectedRegiaoId !== null &&
+    (estStatus === 'success' || (estStatus !== 'error' && estacoes.length > 0));
 
   return (
     <View style={styles.root}>
@@ -729,12 +641,22 @@ export default function EstacoesScreen() {
             <View style={[styles.emptyWrap, isDesktop && styles.emptyWrapDesktop]}>
               <EmptyState
                 message={
-                  searchText || filterStatus !== 'TODOS' || filterTipo !== 'TODOS'
+                  hasFilters
                     ? 'Nenhuma estação encontrada para os filtros selecionados.'
                     : 'Nenhuma estação cadastrada para esta região.'
                 }
                 icon="📡"
               />
+              {!hasFilters && isGoverno && (
+                <TouchableOpacity
+                  style={styles.emptyCreateBtn}
+                  onPress={() => setFormVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.card} />
+                  <Text style={styles.emptyCreateBtnText}>Cadastrar estação</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : null
         }
@@ -778,6 +700,7 @@ export default function EstacoesScreen() {
         visible={!!selectedEstacao}
         estacao={selectedEstacao}
         regiaoId={selectedEstacao?.idRegiao ?? null}
+        regiaoNome={selectedRegiao?.nome}
         onClose={() => setSelectedEstacao(null)}
       />
     </View>
@@ -789,7 +712,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   listContent: {
     paddingBottom: Spacing.xxl,
   },
@@ -804,9 +726,6 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerSectionDesktop: {
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
     paddingHorizontal: Spacing.xl,
   },
   screenTitle: {
@@ -832,16 +751,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     marginBottom: Spacing.sm,
   },
-  selectorLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  regiaoSelectWrap: {
     paddingHorizontal: Spacing.md,
-    marginBottom: 4,
+    paddingVertical: Spacing.xs,
+  },
+  regiaoSelectWrapDesktop: {
+    paddingHorizontal: Spacing.xl,
+    maxWidth: 360,
   },
   regLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
   },
@@ -874,18 +795,16 @@ const styles = StyleSheet.create({
   filterBlock: {
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     marginBottom: Spacing.sm,
   },
-
-  // Search box
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.md,
     backgroundColor: Colors.background,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -894,14 +813,23 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 4,
     gap: Spacing.xs,
   },
-  searchWrapDesktop: {
-    marginHorizontal: Spacing.xl,
-  },
+  searchWrapDesktop: {},
   searchInput: {
     flex: 1,
     fontSize: FontSize.sm,
     color: Colors.text,
     paddingVertical: 0,
+  },
+  clearFiltersBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingBottom: 2,
+  },
+  clearFiltersBtnText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 
   // Stations list header
@@ -913,15 +841,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   stationsHeaderDesktop: {
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
     paddingHorizontal: Spacing.xl,
   },
   stationsCount: {
     fontSize: FontSize.sm,
     fontWeight: '600',
     color: Colors.textMuted,
+    flex: 1,
   },
   addBtn: {
     flexDirection: 'row',
@@ -943,21 +869,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   cardWrapDesktop: {
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
     paddingHorizontal: Spacing.xl,
   },
 
-  // Empty state wrapper
+  // Empty state
   emptyWrap: {
     paddingHorizontal: Spacing.md,
+    alignItems: 'center',
   },
   emptyWrapDesktop: {
-    maxWidth: 900,
-    alignSelf: 'center' as const,
-    width: '100%',
     paddingHorizontal: Spacing.xl,
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+    marginTop: Spacing.sm,
+    ...Shadow.sm,
+  },
+  emptyCreateBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.card,
   },
 
   // FAB

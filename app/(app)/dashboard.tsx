@@ -4,11 +4,12 @@ import {
   View,
   Text,
   ScrollView,
+  TouchableOpacity,
   RefreshControl,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useDashboardSummary } from '@hooks/useDashboardSummary';
 import { useAlertas } from '@hooks/useAlertas';
 import { useIndicadores } from '@hooks/useIndicadores';
@@ -206,16 +207,15 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
   const navigation = useNavigation();
+  const router = useRouter();
 
   const [nivelFilter, setNivelFilter] = useState<NivelRisco | null>(null);
   const [tipoFilter, setTipoFilter] = useState<CategoriaRisco | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusAlerta | null>(null);
 
   useLayoutEffect(() => {
-    navigation.setOptions({
-      title: isGoverno ? 'Dashboard Operacional' : 'Dashboard de Monitoramento',
-    });
-  }, [isGoverno, navigation]);
+    navigation.setOptions({ title: 'Dashboard' });
+  }, [navigation]);
 
   useEffect(() => {
     loadSummary();
@@ -226,10 +226,10 @@ export default function DashboardScreen() {
 
   // Live polling every 10 s while the dashboard is focused
   const pollAll = useCallback(() => {
-    loadSummary();
-    loadAlertas();
-    loadIndicadores();
-    loadRegioes();
+    loadSummary({ silent: true });
+    loadAlertas({ silent: true });
+    loadIndicadores({ silent: true });
+    loadRegioes({ silent: true });
   }, [loadSummary, loadAlertas, loadIndicadores, loadRegioes]);
   usePolling(pollAll);
 
@@ -292,8 +292,11 @@ export default function DashboardScreen() {
   // ── Layout computations ───────────────────────────────────────────────────
 
   const isWide = width >= 768;
-  const numCols = width >= 600 ? 4 : 2;
-  const cardWidth = (width - Spacing.md * 2 - Spacing.sm * (numCols - 1)) / numCols;
+  // Sidebar is 220px on desktop; content area = viewport - sidebar. On mobile = full width.
+  const SIDEBAR_W = isWide ? 220 : 0;
+  const contentW  = width - SIDEBAR_W - (isWide ? Spacing.xl * 2 : Spacing.md * 2);
+  const numCols   = contentW >= 600 ? 4 : 2;
+  const cardWidth = (contentW - Spacing.sm * (numCols - 1)) / numCols;
   const contextLabel = isGoverno ? 'Governo / Defesa Civil' : 'ONG';
   const kpiItems = summary
     ? isGoverno ? buildGovernKPIs(summary) : buildONGKPIs(summary)
@@ -435,7 +438,10 @@ export default function DashboardScreen() {
               : 'Sem dados de indicadores disponíveis.'
           }
         >
-          <RegionalRankingBar data={rankingRows} />
+          <RegionalRankingBar
+            data={rankingRows}
+            onPress={(idRegiao) => router.push(`/regioes/${idRegiao}`)}
+          />
         </ChartCard>
 
         {/* ── Alerts ───────────────────────────────────────────────────────── */}
@@ -466,7 +472,10 @@ export default function DashboardScreen() {
                 />
               }
             >
-              <HorizontalBarChart data={alertStatusBars} />
+              <HorizontalBarChart
+                data={alertStatusBars}
+                onBarPress={(key) => router.push(`/alertas?status=${key}`)}
+              />
             </ChartCard>
           </View>
 
@@ -479,7 +488,10 @@ export default function DashboardScreen() {
               empty={!alertasLoading && alertTypeBars.length === 0}
               emptyMessage="Sem alertas registrados."
             >
-              <HorizontalBarChart data={alertTypeBars} />
+              <HorizontalBarChart
+                data={alertTypeBars}
+                onBarPress={(key) => router.push(`/alertas?tipo=${key}`)}
+              />
             </ChartCard>
           </View>
         </View>
@@ -511,7 +523,12 @@ export default function DashboardScreen() {
               const fg = row.maxNivel ? RiskColors[row.maxNivel] : Colors.textMuted;
               const bg = row.maxNivel ? RiskBackgrounds[row.maxNivel] : Colors.background;
               return (
-                <View key={row.estado} style={[styles.coverageCard, { borderTopColor: fg }]}>
+                <TouchableOpacity
+                  key={row.estado}
+                  style={[styles.coverageCard, { borderTopColor: fg }]}
+                  onPress={() => router.push(`/regioes?estado=${row.estado}`)}
+                  activeOpacity={0.75}
+                >
                   <Text style={[styles.coverageEstado, { color: fg }]}>{row.estado}</Text>
                   <Text style={styles.coverageStat}>
                     {row.qtRegioes} {row.qtRegioes === 1 ? 'região' : 'regiões'}
@@ -531,7 +548,7 @@ export default function DashboardScreen() {
                   {row.maxScore > 0 && (
                     <Text style={styles.coverageScore}>score {row.maxScore}</Text>
                   )}
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -554,10 +571,8 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   contentWide: {
-    maxWidth: 1200,
-    alignSelf: 'center',
-    width: '100%' as unknown as number,
     paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
   },
 
   // Two-column chart layout (desktop)

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { useRegiao } from '@hooks/useRegiao';
 import { useInativarRegiao } from '@hooks/useInativarRegiao';
 import { useEstacoes } from '@hooks/useEstacoes';
 import { useLeituras } from '@hooks/useLeituras';
+import { useRiscoAtual } from '@hooks/useRiscoAtual';
+import { useAlertas } from '@hooks/useAlertas';
 import { usePolling } from '@hooks/usePolling';
 import { useAppContext } from '@contexts/AppContext';
 import { useToast } from '@contexts/ToastContext';
@@ -26,8 +28,14 @@ import {
   VisibilidadeLabels,
   TipoEstacaoLabels,
   StatusEstacaoLabels,
+  NivelRiscoLabels,
+  CategoriaRiscoLabels,
+  TipoAlertaLabels,
+  StatusAlertaLabels,
 } from '@constants/enums';
 import type { StatusEstacao } from '@constants/enums';
+import { SensorReadingSection } from '@components/charts';
+import { extractSensorAnalysis } from '@utils/sensorTransforms';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +54,16 @@ function formatDate(iso?: string | null): string {
       hour: '2-digit', minute: '2-digit',
     });
   } catch { return iso; }
+}
+
+function statusAlertaColor(s: string): string {
+  switch (s) {
+    case 'ABERTO':     return '#B71C1C';
+    case 'EM_ANALISE': return '#E65100';
+    case 'RESOLVIDO':  return '#1B5E20';
+    case 'CANCELADO':  return '#616161';
+    default:           return Colors.textMuted;
+  }
 }
 
 const STATION_STATUS_COLORS: Record<StatusEstacao, string> = {
@@ -78,30 +96,47 @@ export default function DetalheRegiaoScreen() {
   const { status: inativarStatus, execute: inativar } = useInativarRegiao();
   const { status: estStatus, data: estacoes, load: loadEst } = useEstacoes(isNaN(regiaoId) ? null : regiaoId);
   const { status: leitStatus, data: leituras, load: loadLeituras } = useLeituras(isNaN(regiaoId) ? null : regiaoId);
+  const { status: riscoStatus, data: risco, load: loadRisco } = useRiscoAtual(isNaN(regiaoId) ? null : regiaoId);
+  const { status: alertasStatus, data: allAlertas, load: loadAlertas } = useAlertas();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
   const [confirmVisible, setConfirmVisible] = useState(false);
 
-  // Refresh region data + stations + leituras whenever screen gains focus
+  // Region alertas filtered client-side
+  const regionAlertas = useMemo(
+    () => allAlertas.filter(a => a.idRegiao === regiaoId),
+    [allAlertas, regiaoId],
+  );
+
+  // Sensor analysis from leituras
+  const sensorAnalysis = useMemo(
+    () => extractSensorAnalysis(leituras),
+    [leituras],
+  );
+
+  // Load all data on focus
   useFocusEffect(
     useCallback(() => {
       if (!isNaN(regiaoId)) {
         load(regiaoId);
         loadEst();
         loadLeituras();
+        loadRisco();
+        loadAlertas();
       }
-    }, [regiaoId, load, loadEst, loadLeituras]),
+    }, [regiaoId, load, loadEst, loadLeituras, loadRisco, loadAlertas]),
   );
 
-  // Live polling every 10 s
-  const pollRegiao = useCallback(() => {
+  // Live polling for telemetry + risk (not alertas — load on focus is enough)
+  const pollData = useCallback(() => {
     if (!isNaN(regiaoId)) {
-      loadEst();
-      loadLeituras();
+      loadEst({ silent: true });
+      loadLeituras({ silent: true });
+      loadRisco({ silent: true });
     }
-  }, [regiaoId, loadEst, loadLeituras]);
-  usePolling(pollRegiao);
+  }, [regiaoId, loadEst, loadLeituras, loadRisco]);
+  usePolling(pollData);
 
   const handleEditar = useCallback(() => {
     router.push(`/regioes/${regiaoId}/editar`);
@@ -119,6 +154,7 @@ export default function DetalheRegiaoScreen() {
   }, [inativar, regiaoId, router, showToast]);
 
   const isInativa = regiao?.stAtivo === 'N';
+  const leitLoading = leitStatus === 'loading' || leitStatus === 'idle';
 
   return (
     <View style={styles.root}>
@@ -185,7 +221,33 @@ export default function DetalheRegiaoScreen() {
             );
           })()}
 
-          {/* Identificação */}
+          {/* ── Risco Atual ──────────────────────────────────────────────────────── */}
+          {riscoStatus === 'success' && risco && (
+            <View style={[styles.riscoCard, {
+              backgroundColor: RiskBackgrounds[risco.nivelRisco],
+              borderLeftColor: RiskColors[risco.nivelRisco],
+            }]}>
+              <Text style={styles.riscoCardCaption}>Risco atual calculado</Text>
+              <View style={styles.riscoValueRow}>
+                <Text style={[styles.riscoValue, { color: RiskColors[risco.nivelRisco] }]}>
+                  {NivelRiscoLabels[risco.nivelRisco]}
+                </Text>
+                {risco.tipoRisco && (
+                  <View style={[styles.riscoPill, { backgroundColor: RiskColors[risco.nivelRisco] }]}>
+                    <Text style={styles.riscoPillText}>{CategoriaRiscoLabels[risco.tipoRisco]}</Text>
+                  </View>
+                )}
+              </View>
+              {risco.scoreRisco != null && (
+                <Text style={[styles.riscoScore, { color: RiskColors[risco.nivelRisco] }]}>
+                  Score: {risco.scoreRisco}
+                </Text>
+              )}
+              <Text style={styles.riscoTime}>Avaliado em {formatDate(risco.avaliadoEm)}</Text>
+            </View>
+          )}
+
+          {/* ── Identificação ────────────────────────────────────────────────────── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Identificação</Text>
             <InfoRow label="Nome"           value={regiao.nome} />
@@ -196,13 +258,11 @@ export default function DetalheRegiaoScreen() {
             )}
           </View>
 
-          {/* Local técnico (renamed from Localização) */}
+          {/* ── Local técnico ────────────────────────────────────────────────────── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Local técnico</Text>
             <InfoRow label="Cidade" value={regiao.cidade} />
             <InfoRow label="Estado" value={regiao.estado} />
-
-            {/* Coordinates as a single row */}
             <View style={styles.coordRow}>
               <Text style={styles.infoLabel}>Coordenadas técnicas</Text>
               <View style={styles.coordRight}>
@@ -218,12 +278,110 @@ export default function DetalheRegiaoScreen() {
             </View>
           </View>
 
-          {/* Estações vinculadas */}
+          {/* ── Telemetria IoT ───────────────────────────────────────────────────── */}
+          {leitLoading && leituras.length === 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Telemetria IoT</Text>
+              <View style={styles.inlineLoading}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.stationsLoadingText}>Carregando leituras…</Text>
+              </View>
+            </View>
+          ) : leitStatus === 'error' ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Telemetria IoT</Text>
+              <Text style={styles.stationsEmpty}>Erro ao carregar leituras de sensores.</Text>
+            </View>
+          ) : leituras.length === 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Telemetria IoT</Text>
+              <Text style={styles.stationsEmpty}>Nenhuma leitura disponível para esta região.</Text>
+            </View>
+          ) : (
+            <View style={styles.telemetrySection}>
+              <Text style={styles.sectionHeaderText}>Telemetria IoT</Text>
+              {sensorAnalysis.rangeLabel && (
+                <Text style={styles.telRange}>
+                  {sensorAnalysis.totalLeituras} {sensorAnalysis.totalLeituras === 1 ? 'leitura' : 'leituras'} · {sensorAnalysis.rangeLabel}
+                </Text>
+              )}
+              <SensorReadingSection
+                title="Nível de água"
+                componente="HC-SR04"
+                color="#1565C0"
+                seriesMap={{
+                  distancia: sensorAnalysis.agua.distancia,
+                  nivel: sensorAnalysis.agua.nivel,
+                }}
+              />
+              <SensorReadingSection
+                title="Qualidade do ar"
+                componente="Potenciômetro (sim. PMS5003)"
+                color="#6A1B9A"
+                seriesMap={{
+                  pm25: sensorAnalysis.particulado.pm25,
+                  pm10: sensorAnalysis.particulado.pm10,
+                }}
+              />
+              <SensorReadingSection
+                title="Pressão atmosférica"
+                componente="BMP180"
+                color="#00695C"
+                seriesMap={{ pressao: sensorAnalysis.pressao }}
+              />
+              <SensorReadingSection
+                title="Inclinação e vibração"
+                componente="MPU6050"
+                color="#BF360C"
+                seriesMap={{
+                  inclinacao: sensorAnalysis.movimento.inclinacao,
+                  vibracao: sensorAnalysis.movimento.vibracao,
+                }}
+              />
+            </View>
+          )}
+
+          {/* ── Alertas desta região ─────────────────────────────────────────────── */}
+          {alertasStatus !== 'loading' && alertasStatus !== 'idle' && regionAlertas.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>
+                Alertas desta região · {regionAlertas.length}
+              </Text>
+              {regionAlertas.slice(0, 6).map(alerta => (
+                <View key={alerta.idAlerta} style={styles.alertRow}>
+                  <View style={styles.alertLeft}>
+                    <View style={[
+                      styles.alertStatusDot,
+                      { backgroundColor: statusAlertaColor(alerta.statusAlerta) },
+                    ]} />
+                    <View style={styles.alertInfo}>
+                      <Text style={styles.alertTitle} numberOfLines={1}>{alerta.titulo}</Text>
+                      <Text style={styles.alertMeta}>
+                        {TipoAlertaLabels[alerta.tipoAlerta]} · {NivelRiscoLabels[alerta.nivelRisco]}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.alertStatusBadge, { backgroundColor: statusAlertaColor(alerta.statusAlerta) }]}>
+                    <Text style={styles.alertStatusText}>
+                      {StatusAlertaLabels[alerta.statusAlerta]}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              {regionAlertas.length > 6 && (
+                <Text style={styles.maisAlertas}>
+                  + {regionAlertas.length - 6} alerta{regionAlertas.length - 6 !== 1 ? 's' : ''} — veja em Alertas
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* ── Estações vinculadas ──────────────────────────────────────────────── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Estações vinculadas</Text>
 
             {estStatus === 'loading' && (
-              <View style={styles.stationsLoading}>
+              <View style={styles.inlineLoading}>
                 <ActivityIndicator size="small" color={Colors.primary} />
                 <Text style={styles.stationsLoadingText}>Carregando estações…</Text>
               </View>
@@ -261,64 +419,18 @@ export default function DetalheRegiaoScreen() {
             ))}
           </View>
 
-          {/* Leituras recentes */}
+          {/* ── Observações climáticas ───────────────────────────────────────────── */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Leituras recentes</Text>
-
-            {leitStatus === 'loading' && leituras.length === 0 && (
-              <View style={styles.stationsLoading}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.stationsLoadingText}>Carregando leituras…</Text>
-              </View>
-            )}
-
-            {leitStatus === 'error' && (
-              <Text style={styles.stationsEmpty}>Erro ao carregar leituras.</Text>
-            )}
-
-            {leitStatus === 'success' && leituras.length === 0 && (
-              <Text style={styles.stationsEmpty}>Nenhuma leitura disponível para esta região.</Text>
-            )}
-
-            {leituras.length > 0 && (() => {
-              const latest = leituras.slice().sort(
-                (a, b) => new Date(b.dtLeit).getTime() - new Date(a.dtLeit).getTime()
-              )[0];
-              if (!latest) return null;
-              const fields: { label: string; val: number | null | undefined; unit: string }[] = [
-                { label: 'Nível d\'água',        val: latest.nivelAguaPct,     unit: '%' },
-                { label: 'Distância ao nível',  val: latest.distanciaAguaCm,  unit: 'cm' },
-                { label: 'Inclinação',           val: latest.inclinacaoGraus,  unit: '°' },
-                { label: 'Vibração',             val: latest.vibracao,         unit: '' },
-                { label: 'Pressão atm.',         val: latest.pressaoHpa,       unit: 'hPa' },
-                { label: 'PM2.5',                val: latest.pm25,             unit: 'μg/m³' },
-                { label: 'PM10',                 val: latest.pm10,             unit: 'μg/m³' },
-              ];
-              return (
-                <>
-                  <Text style={styles.stationMeta}>
-                    Coletado em {formatDate(latest.dtLeit)} · {leituras.length} leitura{leituras.length !== 1 ? 's' : ''} disponível{leituras.length !== 1 ? 'is' : ''}
-                  </Text>
-                  {fields.map(f => (
-                    <View key={f.label} style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{f.label}</Text>
-                      {f.val != null && !isNaN(Number(f.val)) ? (
-                        <Text style={styles.infoValue}>
-                          {Number(f.val).toFixed(1)}{f.unit ? ` ${f.unit}` : ''}
-                        </Text>
-                      ) : (
-                        <Text style={[styles.infoValue, { fontStyle: 'italic', color: Colors.textMuted }]}>
-                          n/d
-                        </Text>
-                      )}
-                    </View>
-                  ))}
-                </>
-              );
-            })()}
+            <Text style={styles.cardTitle}>Observações climáticas</Text>
+            <View style={styles.climaUnavail}>
+              <Ionicons name="cloud-offline-outline" size={22} color={Colors.textMuted} />
+              <Text style={styles.climaUnavailText}>
+                Observações climáticas externas ainda não estão disponíveis pela API.
+              </Text>
+            </View>
           </View>
 
-          {/* Metadados */}
+          {/* ── Metadados ────────────────────────────────────────────────────────── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Metadados</Text>
             <InfoRow label="Status"        value={isInativa ? 'Inativa' : 'Ativa'} />
@@ -327,7 +439,7 @@ export default function DetalheRegiaoScreen() {
             <InfoRow label="ID da região"  value={String(regiao.idRegiao)} />
           </View>
 
-          {/* Governo actions */}
+          {/* ── Governo actions ───────────────────────────────────────────────────── */}
           {isGoverno && (
             <View style={styles.actions}>
               <TouchableOpacity style={styles.editBtn} onPress={handleEditar} activeOpacity={0.8}>
@@ -438,6 +550,26 @@ const styles = StyleSheet.create({
   vulCardLabel: { fontSize: FontSize.md, fontWeight: '700' },
   vulCardScore: { fontSize: FontSize.xl, fontWeight: '800' },
 
+  // Risco atual
+  riscoCard: {
+    borderRadius: Radius.md, borderLeftWidth: 4, padding: Spacing.md, gap: 4,
+  },
+  riscoCardCaption: {
+    fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  riscoValueRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap',
+  },
+  riscoValue: { fontSize: FontSize.xxl, fontWeight: '800', letterSpacing: -0.5 },
+  riscoPill: {
+    paddingHorizontal: Spacing.sm, paddingVertical: 2,
+    borderRadius: Radius.pill,
+  },
+  riscoPillText: { fontSize: FontSize.xs, fontWeight: '700', color: '#FFFFFF' },
+  riscoScore: { fontSize: FontSize.sm, fontWeight: '600' },
+  riscoTime:  { fontSize: FontSize.xs, color: Colors.textMuted },
+
   card: {
     backgroundColor: Colors.card, borderRadius: Radius.md,
     padding: Spacing.md, gap: Spacing.sm, ...Shadow.sm,
@@ -456,7 +588,6 @@ const styles = StyleSheet.create({
     flex: 1, textAlign: 'right',
   },
 
-  // Coordinates row
   coordRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingVertical: 4,
@@ -470,10 +601,41 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'right', lineHeight: 14,
   },
 
-  // Stations
-  stationsLoading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  inlineLoading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   stationsLoadingText: { fontSize: FontSize.sm, color: Colors.textMuted },
   stationsEmpty: { fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic' },
+
+  // Telemetry section wrapper
+  telemetrySection: { gap: Spacing.sm },
+  sectionHeaderText: {
+    fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, letterSpacing: -0.2,
+  },
+  telRange: {
+    fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: Spacing.xs,
+  },
+
+  // Alert rows
+  alertRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.background,
+    gap: Spacing.sm,
+  },
+  alertLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1 },
+  alertStatusDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  alertInfo: { flex: 1, gap: 2 },
+  alertTitle: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
+  alertMeta:  { fontSize: FontSize.xs, color: Colors.textMuted },
+  alertStatusBadge: {
+    paddingHorizontal: Spacing.xs, paddingVertical: 2,
+    borderRadius: Radius.sm, flexShrink: 0,
+  },
+  alertStatusText: { fontSize: FontSize.xs, fontWeight: '700', color: '#FFFFFF' },
+  maisAlertas: {
+    fontSize: FontSize.xs, color: Colors.textMuted, fontStyle: 'italic',
+    textAlign: 'center', paddingTop: Spacing.xs,
+  },
+
+  // Stations
   stationRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.background,
@@ -484,6 +646,16 @@ const styles = StyleSheet.create({
   stationName: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
   stationMeta: { fontSize: FontSize.xs, color: Colors.textMuted },
   stationStatus: { fontSize: FontSize.xs, fontWeight: '700' },
+
+  // Climate unavailable
+  climaUnavail: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  climaUnavailText: {
+    fontSize: FontSize.sm, color: Colors.textMuted, flex: 1,
+    lineHeight: 19, fontStyle: 'italic',
+  },
 
   // Actions
   actions: { gap: Spacing.sm },

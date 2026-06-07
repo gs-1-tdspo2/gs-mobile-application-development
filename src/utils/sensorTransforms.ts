@@ -54,7 +54,8 @@ function readField(
   return null;
 }
 
-function normalizeTimestamp(raw: string): string {
+function normalizeTimestamp(raw: string | null | undefined): string {
+  if (!raw) return '';
   // Truncate nanoseconds (Java: "2026-01-01T12:00:00.123456789") → ISO-safe
   const truncated = raw.replace(/(\.\d{3})\d+/, '$1');
   if (!truncated.endsWith('Z') && !truncated.includes('+')) {
@@ -63,7 +64,8 @@ function normalizeTimestamp(raw: string): string {
   return truncated;
 }
 
-export function formatLeituraTimestamp(raw: string): string {
+export function formatLeituraTimestamp(raw: string | null | undefined): string {
+  if (!raw) return '—';
   try {
     const d = new Date(normalizeTimestamp(raw));
     if (isNaN(d.getTime())) return raw.slice(11, 16); // fallback: HH:mm substring
@@ -90,6 +92,7 @@ function buildSeries(
   let available = false;
 
   for (const r of sorted) {
+    if (!r.dtLeit) continue; // skip records with missing timestamp
     const v = readField(r as unknown as Record<string, unknown>, candidates);
     if (v !== null) {
       available = true;
@@ -133,12 +136,12 @@ export function extractSensorAnalysis(leituras: LeituraIot[]): SensorAnalysis {
     };
   }
 
-  // Sort ascending by reading timestamp
-  const sorted = [...leituras].sort(
-    (a, b) =>
-      new Date(normalizeTimestamp(a.dtLeit)).getTime() -
-      new Date(normalizeTimestamp(b.dtLeit)).getTime(),
-  );
+  // Sort ascending by reading timestamp; records with no/invalid timestamp sort to front
+  const sorted = [...leituras].sort((a, b) => {
+    const ta = new Date(normalizeTimestamp(a.dtLeit)).getTime();
+    const tb = new Date(normalizeTimestamp(b.dtLeit)).getTime();
+    return (isNaN(ta) ? 0 : ta) - (isNaN(tb) ? 0 : tb);
+  });
 
   const first = sorted[0].dtLeit;
   const last = sorted[sorted.length - 1].dtLeit;

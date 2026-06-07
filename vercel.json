@@ -4,5 +4,10 @@
   "devCommand": "npx expo start --web",
   "cleanUrls": true,
   "framework": null,
-  "rewrites": [{ "source": "/:path*", "destination": "/" }]
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
+  ]
 }

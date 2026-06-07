@@ -63,7 +63,7 @@ function DesktopSidebar() {
       </View>
 
       <View style={sidebar.footer}>
-        <Text style={sidebar.footerText}>GS · FIAP 2025</Text>
+        <Text style={sidebar.footerText}>© Amanajé 2026 - All rights reserverd</Text>
       </View>
     </View>
   );
